@@ -71,7 +71,8 @@ export function getLevel(): number {
       const v = (buf[i]! - 128) / 128;
       sum += v * v;
     }
-    lvl = Math.min(1, Math.sqrt(sum / buf.length) * 4);
+    // Speech RMS sits around 0.05-0.15 of full scale; scale so a normal sentence reaches the top of the meter.
+    lvl = Math.min(1, Math.sqrt(sum / buf.length) * 9);
   }
   if (speaking) lvl = Math.max(lvl, fakeEnvelope());
   return Math.min(1, lvl);
