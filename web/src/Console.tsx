@@ -260,7 +260,7 @@ function SignalField({ registry, activity, target, onSelect }: { registry: Sessi
           return (
             <li key={a.id}>
               {selectable
-                ? <button type="button" onClick={() => onSelect(a.sessionId!)} className="flex w-full items-start gap-2 text-left hover:text-primary">{row}</button>
+                ? <button type="button" onClick={() => onSelect(a.sessionId!)} className="flex w-full items-start gap-2 text-left uppercase hover:text-primary">{row}</button>
                 : <div className="flex items-start gap-2">{row}</div>}
             </li>
           )
