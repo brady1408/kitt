@@ -181,14 +181,12 @@
   }
 }
 
-@keyframes kitt-sweep { 0% { transform: translateX(-120%); } 50% { transform: translateX(450%); } 100% { transform: translateX(-120%); } }
 @keyframes data-drift { from { transform: translateX(-45%); } to { transform: translateX(180%); } }
 @keyframes front-scanner-sweep { 0%, 100% { left: 2%; } 50% { left: 98%; } }
 /* Tails stream behind the lamp: left-side trails glow while it travels right (0-50%), right-side while it travels left. */
 @keyframes front-trail-left { 0%, 40% { opacity: var(--trail-opacity); } 50%, 90% { opacity: 0; } 100% { opacity: var(--trail-opacity); } }
 @keyframes front-trail-right { 0%, 40% { opacity: 0; } 50%, 90% { opacity: var(--trail-opacity); } 100% { opacity: 0; } }
 
-.kitt-sweep { animation: kitt-sweep 1.45s ease-in-out infinite; }
 @keyframes radar-sweep { to { transform: rotate(360deg); } }
 .radar-sweep { animation: radar-sweep 4s linear infinite; }
 .data-drift { animation: data-drift 3.8s linear infinite; }
@@ -207,6 +205,6 @@
 .kitt-front-trail-far-right { --trail-opacity: .28; left: 3.6rem; width: 1.2rem; animation: front-trail-right var(--sweep) linear infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .kitt-sweep, .data-drift, .kitt-front-sweep, .kitt-front-trail, .radar-sweep { animation: none; }
+  .data-drift, .kitt-front-sweep, .kitt-front-trail, .radar-sweep { animation: none; }
   .kitt-front-sweep { left: 50%; }
 }
