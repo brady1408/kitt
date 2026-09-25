@@ -1,0 +1,12 @@
+{
+  "name": "kitt",
+  "private": true,
+  "workspaces": ["hub", "channel", "web"],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit -p hub && bunx tsc --noEmit -p channel && bunx tsc --noEmit -p web",
+    "hub": "bun run hub/src/main.ts",
+    "web:dev": "bun run --cwd web dev",
+    "web:build": "bun run --cwd web build"
+  }
+}
