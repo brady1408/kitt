@@ -9,6 +9,7 @@ import { useHub } from '@/lib/hub-context'
 import { radarLayout } from '@/lib/radar'
 
 const KITT = 'kitt'
+const NO_MESSAGES: ChatMessage[] = []
 
 export function Console() {
   const { state, actions } = useHub()
@@ -24,7 +25,7 @@ export function Console() {
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const messages = state.messages[target] ?? []
+  const messages = state.messages[target] ?? NO_MESSAGES
   const live = state.live[target] ?? null
   const busy = live !== null
   const targetEntry = state.registry.find((e) => e.id === target)
@@ -36,8 +37,16 @@ export function Console() {
   }), [actions])
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
-    if (!busy && window.matchMedia('(min-width: 768px)').matches) inputRef.current?.focus()
-  }, [messages, live, busy])
+  }, [messages, live])
+  const wasBusy = useRef(false)
+  useEffect(() => {
+    const finishedTurn = wasBusy.current && !busy
+    wasBusy.current = busy
+    if (!finishedTurn || !window.matchMedia('(min-width: 768px)').matches) return
+    const active = document.activeElement
+    const typingElsewhere = active instanceof HTMLElement && active !== inputRef.current && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)
+    if (!typingElsewhere) inputRef.current?.focus()
+  }, [busy])
 
   const send = (text: string) => {
     const value = text.trim()
