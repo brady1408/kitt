@@ -57,3 +57,10 @@ test('result events carry the api round-trip time', () => {
   const [ev] = translate(asMsg({ type: 'result', subtype: 'success', is_error: false, result: 'x', total_cost_usd: 0, duration_api_ms: 987, usage: {} }))
   expect(ev).toMatchObject({ type: 'result', apiMs: 987 })
 })
+
+test('a new text block starts a block event; tool blocks do not', () => {
+  expect(translate(asMsg({ type: 'stream_event', event: { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } } })))
+    .toEqual([{ type: 'block' }])
+  expect(translate(asMsg({ type: 'stream_event', event: { type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 't', name: 'Bash', input: {} } } })))
+    .toEqual([])
+})

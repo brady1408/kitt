@@ -113,7 +113,11 @@ export class TaskManager {
     void (async () => {
       try {
       for await (const ev of runner.events) {
-        if (ev.type === 'delta') {
+        if (ev.type === 'block') {
+          if (current.output.trim() && !current.output.endsWith('\n\n')) {
+            current = { ...current, output: `${current.output}\n\n` }
+          }
+        } else if (ev.type === 'delta') {
           current = { ...current, output: current.output + ev.text }
           this.save(current)
         } else if (ev.type === 'tool') {

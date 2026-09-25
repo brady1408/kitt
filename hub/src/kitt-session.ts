@@ -136,6 +136,12 @@ export class KittSession {
             this.deps.registry.patch(KITT_TARGET, { sessionId: ev.sessionId })
           }
           break
+        case 'block':
+          if (this.inFlight && this.inFlight.buffer.trim() && !this.inFlight.buffer.endsWith('\n\n')) {
+            this.inFlight.buffer += '\n\n'
+            this.deps.emit({ type: 'chat.delta', target: KITT_TARGET, turnId: this.inFlight.turnId, text: '\n\n' })
+          }
+          break
         case 'delta':
           if (this.inFlight) {
             this.inFlight.buffer += ev.text

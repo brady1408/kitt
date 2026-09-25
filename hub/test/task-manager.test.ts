@@ -128,3 +128,12 @@ test('rate limit events from task runners update plan usage too', async () => {
   s.runners[0]!.emit({ type: 'ratelimit', window: 'five_hour', utilization: 0.5, resetsAt: 900, status: 'allowed' }); await tick()
   expect(s.planUsage.snapshot().fiveHour).toEqual({ utilization: 0.5, resetsAt: 900, status: 'allowed' })
 })
+
+test('task output separates text blocks with a paragraph break', async () => {
+  const s = setup()
+  s.tasks.create('x')
+  const r = s.runners[0]!
+  r.emit({ type: 'block' }); r.emit({ type: 'delta', text: 'First.' }); await tick()
+  r.emit({ type: 'block' }); r.emit({ type: 'delta', text: 'Second.' }); await tick()
+  expect(s.tasks.list()[0]?.output).toBe('First.\n\nSecond.')
+})

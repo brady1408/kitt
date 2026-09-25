@@ -166,3 +166,17 @@ test('turn results feed the api round-trip into the system monitor', async () =>
   s.runners[0]!.emit({ type: 'result', ok: true, text: 'r', usage, costUsd: 0, apiMs: 777 }); await tick()
   expect(s.system.sample(0).apiMs).toBe(777)
 })
+
+test('text from separate blocks is joined with a paragraph break', async () => {
+  const s = setup()
+  s.kitt.send('go')
+  const r = s.runners[0]!
+  r.emit({ type: 'block' }); r.emit({ type: 'delta', text: 'Let me check.' }); await tick()
+  r.emit({ type: 'tool', name: 'Bash', summary: 'Bash ls' }); await tick()
+  r.emit({ type: 'block' }); r.emit({ type: 'delta', text: 'Done.' }); await tick()
+  r.emit({ type: 'result', ok: true, text: 'Done.', usage, costUsd: 0 }); await tick()
+  const done = s.frames.find((f) => f.type === 'chat.done') as { message: { text: string } }
+  expect(done.message.text).toBe('Let me check.\n\nDone.')
+  const streamed = s.frames.filter((f) => f.type === 'chat.delta').map((f) => (f as { text: string }).text).join('')
+  expect(streamed).toBe('Let me check.\n\nDone.')
+})

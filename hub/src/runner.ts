@@ -4,6 +4,7 @@ import type { PlanWindow, TurnUsage } from './protocol'
 
 export type RunnerEvent =
   | { type: 'init'; sessionId: string; model: string }
+  | { type: 'block' }
   | { type: 'delta'; text: string }
   | { type: 'tool'; name: string; summary: string }
   | { type: 'result'; ok: boolean; text: string; usage: TurnUsage; costUsd: number; apiMs?: number }
@@ -49,6 +50,7 @@ export function translate(m: SDKMessage): RunnerEvent[] {
   if (m.type === 'stream_event') {
     const ev = m.event
     if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') return [{ type: 'delta', text: ev.delta.text }]
+    if (ev.type === 'content_block_start' && ev.content_block.type === 'text') return [{ type: 'block' }]
     return []
   }
   if (m.type === 'assistant') {
