@@ -4,9 +4,11 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/brady/ws/kitt
-Environment=PATH=/home/brady/.local/bin:/home/brady/.bun/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/home/brady/.bun/bin/bun run hub/src/main.ts
+# %h is the user's home directory. Adjust the clone location and bun path if yours differ.
+WorkingDirectory=%h/ws/kitt
+Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+# Optional: Environment=KITT_WORKDIR=%h/projects  KITT_OPERATOR=Michael  KITT_PORT=7331
+ExecStart=%h/.bun/bin/bun run hub/src/main.ts
 Restart=on-failure
 RestartSec=3
 

@@ -30,9 +30,9 @@ function boot() {
   const tasks = new TaskManager({ factory, store, registry, planUsage, system, emit: bus.emit, defaultCwd: join(home, 'pa'), homeDir: home, taskPrompt: 't' })
   const spokes = new Spokes({ registry, store, emit: bus.emit })
   registry.onChange((entry) => bus.emit({ type: 'registry.update', entry }))
-  const hub = createHub({ bus, store, registry, kitt, tasks, spokes, system, port: 0, hostname: '127.0.0.1' })
+  const hub = createHub({ bus, store, registry, kitt, tasks, spokes, system, config: { workdir: join(home, 'pa') }, port: 0, hostname: '127.0.0.1' })
   stops.push(hub.stop)
-  return { hub, runners, registry }
+  return { hub, runners, registry, home }
 }
 
 type Frame = { type: string; [key: string]: any }
@@ -56,10 +56,10 @@ async function open(port: number, path: string) {
 }
 
 test('a browser gets a snapshot on connect and /healthz answers', async () => {
-  const { hub } = boot()
+  const { hub, home } = boot()
   const b = await open(hub.port, '/ws')
   const snap = await b.waitFor((f) => f.type === 'snapshot')
-  expect(snap).toMatchObject({ registry: [{ id: 'kitt' }], messages: [], tasks: [] })
+  expect(snap).toMatchObject({ registry: [{ id: 'kitt' }], messages: [], tasks: [], config: { workdir: join(home, 'pa') } })
   expect(await (await fetch(`http://127.0.0.1:${hub.port}/healthz`)).text()).toBe('ok')
 })
 
@@ -95,7 +95,7 @@ test('a spoke registers, shows up in the registry, and its reply lands as chat.d
   const { hub, registry } = boot()
   const b = await open(hub.port, '/ws')
   const s = await open(hub.port, '/spoke')
-  s.send({ type: 'register', sessionId: 'abc', pid: 1, cwd: '/home/b/x', name: 'x' })
+  s.send({ type: 'register', sessionId: 'abc', pid: 1, cwd: '/home/user/x', name: 'x' })
   await s.waitFor((f) => f.type === 'registered')
   await b.waitFor((f) => f.type === 'registry.update' && f['entry']?.id === 'spoke:abc')
   b.send({ type: 'chat.send', target: 'spoke:abc', text: 'ping' })

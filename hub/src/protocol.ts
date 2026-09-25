@@ -59,6 +59,9 @@ export const SystemStats = z.object({
 })
 export type SystemStats = z.infer<typeof SystemStats>
 
+export const HubConfig = z.object({ workdir: z.string() })
+export type HubConfig = z.infer<typeof HubConfig>
+
 export const Usage = z.object({
   context: z.number(), contextWindow: z.number(), plan: PlanUsageSnapshot,
 })
@@ -78,7 +81,7 @@ export const ClientFrame = z.discriminatedUnion('type', [
 export type ClientFrame = z.infer<typeof ClientFrame>
 
 export const ServerFrame = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('snapshot'), registry: z.array(SessionEntry), messages: z.array(ChatMessage), tasks: z.array(Task), usage: Usage, system: SystemStats }),
+  z.object({ type: z.literal('snapshot'), registry: z.array(SessionEntry), messages: z.array(ChatMessage), tasks: z.array(Task), usage: Usage, system: SystemStats, config: HubConfig }),
   z.object({ type: z.literal('registry.update'), entry: SessionEntry }),
   z.object({ type: z.literal('registry.remove'), id: z.string() }),
   z.object({ type: z.literal('chat.user'), message: ChatMessage }),

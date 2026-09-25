@@ -87,7 +87,8 @@ export function Console() {
     if (id === 'voice') { setVoiceOn((v) => !v); window.speechSynthesis?.cancel() }
     if (id === 'mic') void toggleMic()
   }
-  const placeholder = mode === 'task' ? `Assign a background operation… (${taskCwd.trim() || '~/pa'})`
+  const defaultDir = state.config?.workdir ?? 'the default directory'
+  const placeholder = mode === 'task' ? `Assign a background operation… (${taskCwd.trim() || defaultDir})`
     : targetOffline ? (terminalEntry ? 'Session offline' : 'Select a terminal on the radar or in Agent network')
     : mode === 'pursuit' ? `Transmit to ${terminalEntry?.name ?? 'terminal'}…` : 'Awaiting command…'
 
@@ -152,7 +153,7 @@ export function Console() {
           )}
           {mode === 'task' && (
             <div className="flex items-center justify-between border-b border-border bg-amber/10 px-4 py-2 font-mono text-[10px] uppercase">
-              <span className="text-amber">Auto cruise → commands dispatch as background tasks in {taskCwd.trim() || '~/pa'}</span>
+              <span className="text-amber">Auto cruise → commands dispatch as background tasks in {taskCwd.trim() || defaultDir}</span>
               <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setMode('kitt')}><X />Normal cruise</Button>
             </div>
           )}
@@ -193,7 +194,7 @@ export function Console() {
             </PanelTitle>
             <VoiceModule lamps={lamps} onLamp={onLamp} mode={mode} onMode={setMode} getLevel={getLevel} />
           </section>
-          <TaskPanel cwd={taskCwd} onCwd={setTaskCwd} />
+          <TaskPanel cwd={taskCwd} onCwd={setTaskCwd} defaultDir={defaultDir} />
         </aside>
       </div>
 
@@ -371,7 +372,7 @@ const TASK_DOT: Record<Task['status'], string> = {
   queued: 'bg-muted-foreground/60', running: 'animate-pulse bg-amber shadow-amber', done: 'bg-green shadow-green', error: 'bg-destructive', cancelled: 'bg-muted-foreground/40', interrupted: 'bg-destructive/60',
 }
 
-function TaskPanel({ cwd, onCwd }: { cwd: string; onCwd: (v: string) => void }) {
+function TaskPanel({ cwd, onCwd, defaultDir }: { cwd: string; onCwd: (v: string) => void; defaultDir: string }) {
   const { state, actions } = useHub()
   const [prompt, setPrompt] = useState('')
   const [open, setOpen] = useState<string | null>(null)
@@ -386,7 +387,7 @@ function TaskPanel({ cwd, onCwd }: { cwd: string; onCwd: (v: string) => void }) 
     <section className="flex min-h-[390px] flex-col border border-border bg-card/75 p-3 panel-cut xl:min-h-0 xl:flex-1">
       <PanelTitle icon={Bot} status={`${running} running`}>Task queue</PanelTitle>
       <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={2} placeholder="Assign a background operation…" className="w-full resize-none border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
-      <input value={cwd} onChange={(event) => onCwd(event.target.value)} placeholder="Working directory (default ~/pa)" className="mt-2 w-full border border-input bg-background px-3 py-1.5 font-mono text-xs outline-none focus:border-primary" />
+      <input value={cwd} onChange={(event) => onCwd(event.target.value)} placeholder={`Working directory (default ${defaultDir})`} className="mt-2 w-full border border-input bg-background px-3 py-1.5 font-mono text-xs outline-none focus:border-primary" />
       <Button onClick={run} disabled={!prompt.trim()} className="mt-2 w-full"><Play />Dispatch agent</Button>
       <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
         {state.tasks.length === 0 && <div className="py-8 text-center text-xs text-muted-foreground">Queue clear. Agents standing by.</div>}

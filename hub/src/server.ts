@@ -1,6 +1,6 @@
 import type { ServerWebSocket } from 'bun'
 import { join, resolve } from 'node:path'
-import { ClientFrame, KITT_TARGET, type ServerFrame } from './protocol'
+import { ClientFrame, KITT_TARGET, type HubConfig, type ServerFrame } from './protocol'
 import type { Bus } from './bus'
 import type { Store } from './store'
 import type { Registry } from './registry'
@@ -17,6 +17,7 @@ export type HubDeps = {
   tasks: TaskManager
   spokes: Spokes
   system: SystemMonitor
+  config: HubConfig
   port: number
   hostname: string
   staticDir?: string
@@ -44,6 +45,7 @@ export function createHub(deps: HubDeps): { port: number; stop(): void } {
     tasks: deps.tasks.list(),
     usage: deps.kitt.usage(),
     system: deps.system.sample(),
+    config: deps.config,
   })
 
   const handleClient = (ws: Socket, raw: string | Buffer): void => {

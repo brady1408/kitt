@@ -11,7 +11,7 @@ function setup(staleMs?: number) {
   const spokes = new Spokes({ registry, store, emit: (f) => frames.push(f), ...(staleMs ? { staleMs } : {}) })
   const out: HubToSpokeFrame[] = []
   const conn = spokes.connect((f) => out.push(f))
-  const register = () => conn.handle(JSON.stringify({ type: 'register', sessionId: 's1', pid: 7, cwd: '/home/b/ws/go', name: 'go' }))
+  const register = () => conn.handle(JSON.stringify({ type: 'register', sessionId: 's1', pid: 7, cwd: '/home/user/ws/go', name: 'go' }))
   return { store, registry, frames, spokes, out, conn, register }
 }
 
@@ -19,7 +19,7 @@ test('register creates a registry entry and acks with the id', () => {
   const s = setup()
   s.register()
   expect(s.out[0]).toEqual({ type: 'registered', id: 'spoke:s1' })
-  expect(s.registry.get('spoke:s1')).toMatchObject({ kind: 'spoke', name: 'go', cwd: '/home/b/ws/go', status: 'idle', sessionId: 's1', pid: 7 })
+  expect(s.registry.get('spoke:s1')).toMatchObject({ kind: 'spoke', name: 'go', cwd: '/home/user/ws/go', status: 'idle', sessionId: 's1', pid: 7 })
   expect(s.spokes.isOnline('spoke:s1')).toBe(true)
 })
 

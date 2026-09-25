@@ -24,6 +24,7 @@ test('server snapshot frame validates', () => {
   const r = ServerFrame.safeParse({
     type: 'snapshot', registry: [], messages: [], tasks: [],
     system: { load: 0.1, memUsed: 0.5, diskUsed: 0.9, diskFreeGb: 20, apiMs: null, sampledAt: 1 },
+    config: { workdir: '/home/user' },
     usage: { context: 0, contextWindow: 1000000, plan: { fiveHour: null, sevenDay: { utilization: 0.36, resetsAt: 1790582400, status: 'allowed' } } },
   })
   expect(r.success).toBe(true)

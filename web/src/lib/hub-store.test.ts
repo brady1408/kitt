@@ -10,13 +10,14 @@ const usage = { context: 5, contextWindow: 1_000_000, plan: { fiveHour: { utiliz
 
 test('snapshot groups messages by target and resets live turns', () => {
   const s = apply({ ...initialState, live: { kitt: { turnId: 'x', text: 'half', tools: [] } } }, {
-    type: 'snapshot', registry: [], tasks: [], usage, system: { load: 0, memUsed: 0, diskUsed: 0, diskFreeGb: 0, apiMs: null, sampledAt: 0 },
+    type: 'snapshot', registry: [], tasks: [], usage, system: { load: 0, memUsed: 0, diskUsed: 0, diskFreeGb: 0, apiMs: null, sampledAt: 0 }, config: { workdir: '/home/user' },
     messages: [msg({ target: 'kitt', text: 'a' }), msg({ target: 'spoke:1', text: 'b' }), msg({ target: 'kitt', text: 'c' })],
   })
   expect(s.messages['kitt']?.map((m) => m.text)).toEqual(['a', 'c'])
   expect(s.messages['spoke:1']?.map((m) => m.text)).toEqual(['b'])
   expect(s.live).toEqual({})
   expect(s.usage).toEqual(usage)
+  expect(s.config).toEqual({ workdir: '/home/user' })
 })
 
 test('deltas and tools accumulate into a live turn; done replaces it with stored messages', () => {
@@ -122,7 +123,7 @@ test('activity records link changes, plan and disk thresholds, and system lines,
   const sys = (diskUsed: number) => ({ load: 0, memUsed: 0, diskUsed, diskFreeGb: 5, apiMs: null, sampledAt: 1 })
   s = apply(s, { type: 'system.update', stats: sys(0.85) }, { type: 'system.update', stats: sys(0.92) }, { type: 'system.update', stats: sys(0.93) })
   s = apply(s, { type: 'chat.system', target: 'kitt', text: 'Fresh session started.' })
-  s = apply(s, { type: 'snapshot', registry: [entry('kitt', 'kitt', 'idle')], messages: [], tasks: [], usage: plan('allowed'), system: sys(0.5) })
+  s = apply(s, { type: 'snapshot', registry: [entry('kitt', 'kitt', 'idle')], messages: [], tasks: [], usage: plan('allowed'), system: sys(0.5), config: { workdir: '/home/user' } })
   expect(texts(s)).toEqual([
     'Fresh session started.',
     'Drive space above 90%',

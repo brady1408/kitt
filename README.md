@@ -43,11 +43,11 @@ bun run web:build
 bun run hub
 ```
 
-Open `http://<this-machine's-ip>:7331`. The KITT session starts in `~/pa` by default; point it somewhere else with `KITT_PA_DIR`.
+Open `http://<this-machine's-ip>:7331`. The KITT session starts in your home directory by default; point it at a project with `KITT_WORKDIR` so it picks up that project's `CLAUDE.md`, and tell it your name with `KITT_OPERATOR`.
 
 ### Run it as a service
 
-`deploy/kitt-hub.service` is a systemd user unit. Edit the paths in it for your user, then:
+`deploy/kitt-hub.service` is a systemd user unit that assumes the repo at `~/ws/kitt` and Bun at `~/.bun/bin/bun`; adjust if yours differ, then:
 
 ```sh
 ln -s ~/ws/kitt/deploy/kitt-hub.service ~/.config/systemd/user/
@@ -95,11 +95,12 @@ Hub environment variables:
 | `KITT_PORT` | `7331` | Listen port |
 | `KITT_HOST` | `0.0.0.0` | Bind address |
 | `KITT_DATA_DIR` | `~/.local/share/kitt` | SQLite database location |
-| `KITT_PA_DIR` | `~/pa` | Working directory of the KITT session and default for tasks |
+| `KITT_WORKDIR` | your home directory | Working directory of the KITT session and default for tasks |
+| `KITT_OPERATOR` | your username | How KITT addresses you |
 
 Spoke environment variables: `KITT_HUB_URL` (default `ws://127.0.0.1:7331/spoke`) and `KITT_CHANNEL` (set to `1` by `ck`).
 
-The KITT persona and the task prompt live in `hub/src/persona.ts`.
+The KITT persona and the task prompt live in `hub/src/persona.ts` if you want a different character.
 
 ## Security
 
@@ -125,4 +126,4 @@ The console design was started in [Lovable](https://lovable.dev) and ported by h
 
 ## Status
 
-v1. Working and in daily use on one machine. Known rough edges are tracked in the project notes rather than here; the notable ones are that the `API` lamp trips on long tool-heavy turns, and that server-side voice is not built yet, so speech quality is whatever your browser provides.
+v1. Working and in daily use on one Linux machine; other platforms are untested. Known rough edges: the `API` lamp trips on long tool-heavy turns, and server-side voice is not built yet, so speech quality is whatever your browser provides. Issues and pull requests are welcome.
