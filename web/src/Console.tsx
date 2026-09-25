@@ -83,7 +83,7 @@ export function Console() {
         <div className="text-right font-mono text-[9px] uppercase text-muted-foreground"><p className="text-accent">{state.connected ? 'Neural link active' : 'Neural link lost'}</p><p>Console / 04.18</p></div>
       </header>
 
-      <div className="relative mb-4 -mx-3 md:-mx-5"><FrontScanner /></div>
+      <div className="relative mx-auto mb-4 max-w-[1600px]"><FrontScanner /></div>
 
       <div className="mx-auto grid max-w-[1600px] gap-4 xl:grid-cols-[250px_minmax(440px,1fr)_330px]">
         <aside className="space-y-4">
