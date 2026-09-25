@@ -12,11 +12,12 @@ import { Spokes } from '../src/spokes'
 import { fakeFactory } from './fake-runner'
 import { PlanUsage } from '../src/plan-usage'
 import { SystemMonitor } from '../src/system-monitor'
+import { ensureSelfSignedCert, type TlsPair } from '../src/tls'
 
 const stops: (() => void)[] = []
 afterEach(() => { for (const s of stops.splice(0)) s() })
 
-function boot(opts: { ttsUrl?: string } = {}) {
+function boot(opts: { ttsUrl?: string; tls?: TlsPair; localPort?: number } = {}) {
   const home = mkdtempSync(join(tmpdir(), 'kitt-home-'))
   mkdirSync(join(home, 'pa'))
   const store = new Store(':memory:')
@@ -30,7 +31,7 @@ function boot(opts: { ttsUrl?: string } = {}) {
   const tasks = new TaskManager({ factory, store, registry, planUsage, system, emit: bus.emit, defaultCwd: join(home, 'pa'), homeDir: home, taskPrompt: 't' })
   const spokes = new Spokes({ registry, store, emit: bus.emit })
   registry.onChange((entry) => bus.emit({ type: 'registry.update', entry }))
-  const hub = createHub({ bus, store, registry, kitt, tasks, spokes, system, config: { workdir: join(home, 'pa') }, ...(opts.ttsUrl ? { ttsUrl: opts.ttsUrl } : {}), port: 0, hostname: '127.0.0.1' })
+  const hub = createHub({ bus, store, registry, kitt, tasks, spokes, system, config: { workdir: join(home, 'pa') }, ...(opts.ttsUrl ? { ttsUrl: opts.ttsUrl } : {}), ...(opts.tls ? { tls: opts.tls } : {}), ...(opts.localPort !== undefined ? { localPort: opts.localPort } : {}), port: 0, hostname: '127.0.0.1' })
   stops.push(hub.stop)
   return { hub, runners, registry, home }
 }
@@ -155,4 +156,20 @@ test('tts routes proxy to the sidecar and report 503 when it is down', async () 
   const down = boot({ ttsUrl: 'http://127.0.0.1:1' })
   expect((await fetch(`http://127.0.0.1:${down.hub.port}/tts/voices`)).status).toBe(503)
   expect((await fetch(`http://127.0.0.1:${down.hub.port}/tts?text=x`)).status).toBe(503)
+})
+
+test('with tls the hub serves https for browsers, plain http on the loopback port, and exposes its certificate', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kitt-tls-'))
+  const tls = ensureSelfSignedCert(dir, ['127.0.0.1'])
+  const { hub } = boot({ tls, localPort: 0 })
+  const insecure = { tls: { rejectUnauthorized: false } } as RequestInit
+  expect(await (await fetch(`https://127.0.0.1:${hub.port}/healthz`, insecure)).text()).toBe('ok')
+  expect(hub.localPort).toBeGreaterThan(0)
+  expect(await (await fetch(`http://127.0.0.1:${hub.localPort}/healthz`)).text()).toBe('ok')
+  const pem = await fetch(`http://127.0.0.1:${hub.localPort}/cert.pem`)
+  expect(pem.headers.get('content-type')).toBe('application/x-pem-file')
+  expect(await pem.text()).toBe(tls.cert)
+  const s = await open(hub.localPort!, '/spoke')
+  s.send({ type: 'register', sessionId: 'tls-spoke', pid: 1, cwd: '/home/user/x', name: 'x' })
+  await s.waitFor((f) => f.type === 'registered')
 })

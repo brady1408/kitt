@@ -45,7 +45,9 @@ bun run web:build
 bun run hub
 ```
 
-Open `http://<this-machine's-ip>:7331`. The KITT session starts in your home directory by default; point it at a project with `KITT_WORKDIR` so it picks up that project's `CLAUDE.md`, and tell it your name with `KITT_OPERATOR`.
+Open `https://<this-machine's-ip>:7331`. The hub makes itself a self-signed certificate on first start; your browser will warn once. Trust it and move on, or import it properly so the warning never returns: download it from `http://127.0.0.1:7330/cert.pem` on the hub machine (or `https://<ip>:7331/cert.pem`) and add it to your OS keychain as trusted. The secure origin is what lets the browser use your microphone; `KITT_TLS=off` serves plain http if you'd rather.
+
+The KITT session starts in your home directory by default; point it at a project with `KITT_WORKDIR` so it picks up that project's `CLAUDE.md`, and tell it your name with `KITT_OPERATOR`.
 
 ### Run it as a service
 
@@ -109,7 +111,9 @@ Hub environment variables:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `KITT_PORT` | `7331` | Listen port |
+| `KITT_PORT` | `7331` | LAN listener (https unless `KITT_TLS=off`) |
+| `KITT_LOCAL_PORT` | `7330` | Plain-http loopback listener for spokes and local tools |
+| `KITT_TLS` | on | Set to `off` to serve plain http on the LAN port |
 | `KITT_HOST` | `0.0.0.0` | Bind address |
 | `KITT_DATA_DIR` | `~/.local/share/kitt` | SQLite database location |
 | `KITT_WORKDIR` | your home directory | Working directory of the KITT session and default for tasks |
@@ -119,7 +123,7 @@ Hub environment variables:
 
 Sidecar environment variables: `KITT_TTS_PORT` (7333), `KITT_TTS_HOST` (127.0.0.1), `KITT_TTS_VOICE` (`am_michael`), `KITT_TTS_MODEL` and `KITT_TTS_VOICES` (model file paths).
 
-Spoke environment variables: `KITT_HUB_URL` (default `ws://127.0.0.1:7331/spoke`) and `KITT_CHANNEL` (set to `1` by `ck`).
+Spoke environment variables: `KITT_HUB_URL` (default `ws://127.0.0.1:7330/spoke`) and `KITT_CHANNEL` (set to `1` by `ck`).
 
 The KITT persona and the task prompt live in `hub/src/persona.ts` if you want a different character.
 
@@ -130,6 +134,7 @@ This is built for a trusted LAN and nothing more.
 - There is no authentication. Anyone who can reach the port can talk to KITT and dispatch tasks.
 - The KITT and task sessions run with Claude Code permissions bypassed. They can do anything your shell can.
 - The browser socket refuses cross-origin upgrades, so a web page you visit elsewhere cannot drive the hub. Spokes are accepted from loopback only.
+- The LAN listener uses a self-signed certificate. That gives you a secure origin for the microphone, not identity: anyone on the LAN could run their own hub with their own certificate.
 - Task working directories must be inside your home directory.
 
 Do not expose the port to the internet.
@@ -137,7 +142,7 @@ Do not expose the port to the internet.
 ## Development
 
 ```sh
-bun run hub          # hub on :7331, serving web/dist
+bun run hub          # https on :7331 for browsers, http on 127.0.0.1:7330 for spokes and tools; serves web/dist
 bun run web:dev      # Vite on :5173 with /ws proxied to the hub, for UI work
 bun test             # hub, channel and web tests
 bun run typecheck    # all three packages

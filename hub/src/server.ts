@@ -8,6 +8,7 @@ import type { KittSession } from './kitt-session'
 import type { TaskManager } from './task-manager'
 import type { Spokes } from './spokes'
 import type { SystemMonitor } from './system-monitor'
+import type { TlsPair } from './tls'
 
 export type HubDeps = {
   bus: Bus
@@ -21,6 +22,10 @@ export type HubDeps = {
   ttsUrl?: string
   port: number
   hostname: string
+  /** Self-signed pair for the LAN listener; browsers need a secure origin for the microphone. */
+  tls?: TlsPair
+  /** Plain-http loopback listener for spokes and local tools. */
+  localPort?: number
   staticDir?: string
 }
 
@@ -30,7 +35,7 @@ type Socket = ServerWebSocket<ConnData>
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
 
-export function createHub(deps: HubDeps): { port: number; stop(): void } {
+export function createHub(deps: HubDeps): { port: number; localPort: number | null; stop(): void } {
   const browsers = new Set<Socket>()
   deps.bus.subscribe((f) => {
     const data = JSON.stringify(f)
@@ -93,14 +98,17 @@ export function createHub(deps: HubDeps): { port: number; stop(): void } {
     }
   }
 
-  const server = Bun.serve<ConnData>({
-    port: deps.port,
-    hostname: deps.hostname,
+  const serveOptions = {
     // Synthesizing a long paragraph can take well over Bun's 10 s default.
     idleTimeout: 120,
-    fetch(req, srv): Response | undefined | Promise<Response> {
+    fetch(req: Request, srv: Bun.Server<ConnData>): Response | undefined | Promise<Response> {
       const url = new URL(req.url)
       if (url.pathname === '/healthz') return new Response('ok')
+      if (url.pathname === '/cert.pem') {
+        return deps.tls
+          ? new Response(deps.tls.cert, { headers: { 'Content-Type': 'application/x-pem-file', 'Content-Disposition': 'attachment; filename="kitt-console.pem"' } })
+          : new Response('tls is not enabled', { status: 404 })
+      }
       if (url.pathname === '/tts/voices') return proxyTts(deps.ttsUrl, '/voices')
       if (url.pathname === '/tts') return proxyTts(deps.ttsUrl, `/tts${url.search}`)
       if (url.pathname === '/ws') {
@@ -116,22 +124,29 @@ export function createHub(deps: HubDeps): { port: number; stop(): void } {
       return serveStatic(deps.staticDir, url.pathname)
     },
     websocket: {
-      open(ws) {
+      open(ws: Socket) {
         if (ws.data.kind === 'browser') { browsers.add(ws); reply(ws, snapshot()); return }
         ws.data.conn = deps.spokes.connect((f) => ws.send(JSON.stringify(f)))
       },
-      message(ws, raw) {
+      message(ws: Socket, raw: string | Buffer) {
         if (ws.data.kind === 'browser') handleClient(ws, raw)
         else ws.data.conn?.handle(String(raw))
       },
-      close(ws) {
+      close(ws: Socket) {
         if (ws.data.kind === 'browser') browsers.delete(ws)
         else ws.data.conn?.close()
       },
     },
-  })
+  }
 
-  return { port: server.port ?? deps.port, stop: () => server.stop(true) }
+  const server = Bun.serve<ConnData>({ ...serveOptions, port: deps.port, hostname: deps.hostname, ...(deps.tls ? { tls: deps.tls } : {}) })
+  const local = deps.localPort !== undefined ? Bun.serve<ConnData>({ ...serveOptions, port: deps.localPort, hostname: '127.0.0.1' }) : null
+
+  return {
+    port: server.port ?? deps.port,
+    localPort: local ? (local.port ?? deps.localPort ?? null) : null,
+    stop: () => { server.stop(true); local?.stop(true) },
+  }
 }
 
 // Browsers send Origin on WebSocket upgrades; a page from any other site must not be able to

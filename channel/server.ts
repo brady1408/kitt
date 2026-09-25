@@ -10,7 +10,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { basename } from 'node:path'
 
-const HUB_URL = process.env['KITT_HUB_URL'] ?? 'ws://127.0.0.1:7331/spoke'
+const HUB_URL = process.env['KITT_HUB_URL'] ?? 'ws://127.0.0.1:7330/spoke'
 const SESSION_ID = process.env['CLAUDE_CODE_SESSION_ID'] ?? `pid-${process.ppid}`
 const CWD = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd()
 const PID = Number(process.env['CLAUDE_PID'] ?? process.ppid)

@@ -9,6 +9,6 @@ export default defineConfig({
   server: {
     host: true,
     fs: { allow: ['..'] },
-    proxy: { '/ws': { target: 'ws://127.0.0.1:7331', ws: true } },
+    proxy: { '/ws': { target: 'ws://127.0.0.1:7330', ws: true }, '/tts': { target: 'http://127.0.0.1:7330' } },
   },
 })
