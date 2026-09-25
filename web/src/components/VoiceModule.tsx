@@ -20,7 +20,7 @@ function LampPlate({ lamp, onClick }: { lamp: Lamp; onClick?: () => void }) {
       disabled={!control}
       aria-pressed={control ? lamp.lit : undefined}
       title={control ? `Toggle ${lamp.label}` : `${lamp.label}${lamp.lit ? ' active' : ''}`}
-      className={`flex h-7 w-14 items-center justify-center gap-1 rounded-[3px] text-[9px] font-bold uppercase leading-none tracking-wide transition-colors ${style} ${control ? 'cursor-pointer' : 'cursor-default'}`}
+      className={`flex h-7 w-14 items-center justify-center gap-1 rounded-[3px] text-[9px] font-bold uppercase leading-none tracking-wide transition-colors ${style} ${control ? 'cursor-pointer hover:brightness-125' : 'cursor-default'}`}
     >
       <span>{lamp.label}</span>
       {lamp.detail && <span className="font-mono text-[8px] opacity-80">{lamp.detail}</span>}
