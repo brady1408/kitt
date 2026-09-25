@@ -10,16 +10,21 @@ const LAMP_STYLE: Record<Lamp['tone'], { lit: string; off: string }> = {
 
 const CONTROL_LAMPS = new Set<Lamp['id']>(['voice', 'mic'])
 
-function LampPlate({ lamp, onClick }: { lamp: Lamp; onClick?: () => void }) {
+function LampPlate({ lamp, onClick, onPointer }: { lamp: Lamp; onClick?: () => void; onPointer?: (phase: 'down' | 'up') => void }) {
   const control = CONTROL_LAMPS.has(lamp.id)
   const style = LAMP_STYLE[lamp.tone][lamp.lit ? 'lit' : 'off']
+  const held = onPointer !== undefined
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={held ? undefined : onClick}
+      onPointerDown={held ? (e) => { e.preventDefault(); onPointer('down') } : undefined}
+      onPointerUp={held ? () => onPointer('up') : undefined}
+      onPointerCancel={held ? () => onPointer('up') : undefined}
+      onContextMenu={held ? (e) => e.preventDefault() : undefined}
       disabled={!control}
       aria-pressed={control ? lamp.lit : undefined}
-      title={control ? `Toggle ${lamp.label}` : `${lamp.label}${lamp.lit ? ' active' : ''}`}
+      title={lamp.id === 'mic' ? 'Hold to talk, or tap to toggle. Space bar also holds to talk.' : control ? `Toggle ${lamp.label}` : `${lamp.label}${lamp.lit ? ' active' : ''}`}
       className={`flex h-7 w-14 items-center justify-center gap-1 rounded-[3px] text-[9px] font-bold uppercase leading-none tracking-wide transition-colors ${style} ${control ? 'cursor-pointer hover:brightness-125' : 'cursor-default'}`}
     >
       <span>{lamp.label}</span>
@@ -34,9 +39,10 @@ const MODES: { id: SendMode; lines: [string, string]; active: string; off: strin
   { id: 'pursuit', lines: ['Pursuit', ''], active: 'bg-primary text-white shadow-signal', off: 'bg-primary/10 text-primary/45', gauge: 'bg-primary shadow-signal' },
 ]
 
-export function VoiceModule({ lamps, onLamp, mode, onMode, getLevel }: {
+export function VoiceModule({ lamps, onLamp, onMicPointer, mode, onMode, getLevel }: {
   lamps: Lamp[]
   onLamp: (id: Lamp['id']) => void
+  onMicPointer: (phase: 'down' | 'up') => void
   mode: SendMode
   onMode: (mode: SendMode) => void
   getLevel: () => number
@@ -45,7 +51,7 @@ export function VoiceModule({ lamps, onLamp, mode, onMode, getLevel }: {
   return (
     <div className="border border-border bg-background/60 p-3">
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        <div className="flex flex-col gap-1.5">{column('left').map((l) => <LampPlate key={l.id} lamp={l} onClick={() => onLamp(l.id)} />)}</div>
+        <div className="flex flex-col gap-1.5">{column('left').map((l) => <LampPlate key={l.id} lamp={l} onClick={() => onLamp(l.id)} onPointer={l.id === 'mic' ? onMicPointer : undefined} />)}</div>
         <div className="min-w-0"><VoiceBox getLevel={getLevel} frameless /></div>
         <div className="flex flex-col gap-1.5">{column('right').map((l) => <LampPlate key={l.id} lamp={l} onClick={() => onLamp(l.id)} />)}</div>
       </div>

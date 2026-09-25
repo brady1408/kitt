@@ -8,6 +8,7 @@ import { ActivityBar } from '@/components/ActivityBar'
 import { getLevel, getVoiceName, listVoices, resumeAudio, setVoiceName, watchMediaElements } from '@/lib/audio-meter'
 import { createKittMic } from '@/lib/kitt-mic'
 import type { MicState } from '@/lib/mic'
+import { isTypingTarget, pttKeyAction, pttPointerAction } from '@/lib/ptt'
 import { getServerVoices, kittVoice, loadServerVoices, onServerVoices } from '@/lib/kitt-voice'
 import { useHub } from '@/lib/hub-context'
 import { radarLayout } from '@/lib/radar'
@@ -100,11 +101,32 @@ export function Console() {
     : mode === 'pursuit' ? `Transmit to ${terminalEntry?.name ?? 'terminal'}…` : 'Awaiting command…'
 
   sendRef.current = (text: string) => { setInput(text); send(text) }
+  const micStateRef = useRef<MicState>('idle')
+  micStateRef.current = micState
   const toggleMic = async () => {
     resumeAudio()
     kittVoice.cancel()
     await micRef.current?.toggle()
   }
+  const pressedAt = useRef(0)
+  const onMicPointer = (phase: 'down' | 'up') => {
+    const now = performance.now()
+    const action = pttPointerAction(phase, micStateRef.current, phase === 'up' ? now - pressedAt.current : 0)
+    if (phase === 'down') pressedAt.current = now
+    if (action) void toggleMic()
+  }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const action = pttKeyAction({ type: e.type as 'keydown' | 'keyup', code: e.code, repeat: e.repeat, typing: isTypingTarget(e.target), modifier: e.ctrlKey || e.metaKey || e.altKey }, micStateRef.current)
+      if (!action) return
+      e.preventDefault()
+      void toggleMic()
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('keyup', onKey)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKey) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const activeCount = state.registry.filter((e) => e.status === 'working').length
 
@@ -184,7 +206,7 @@ export function Console() {
               action={<Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" title="Clear KITT conversation" aria-label="Clear KITT conversation" onClick={() => { kittVoice.cancel(); actions.clearChat() }}><Trash2 /></Button>}>
               Comms control
             </PanelTitle>
-            <VoiceModule lamps={lamps} onLamp={onLamp} mode={mode} onMode={setMode} getLevel={getLevel} />
+            <VoiceModule lamps={lamps} onLamp={onLamp} onMicPointer={onMicPointer} mode={mode} onMode={setMode} getLevel={getLevel} />
             <VoicePicker />
           </section>
           <TaskPanel cwd={taskCwd} onCwd={setTaskCwd} defaultDir={defaultDir} />

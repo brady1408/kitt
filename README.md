@@ -12,7 +12,7 @@ Everything runs on the machine where Claude Code is installed and logged in. Not
 - **Dispatch background tasks.** Each task is a one-shot Claude Code session in a directory you pick. Up to three run at once; the rest queue.
 - **Reach your terminals.** Any interactive `claude` session launched through the `ck` wrapper appears on the radar and in the Agent network panel. Pick it and your messages are pushed into that terminal; its replies come back to the console.
 - **See the machine.** System status shows real CPU load, memory, drive space and the last API round-trip. Agent metrics shows the session's context usage and your plan's five-hour and seven-day windows, straight from the rate-limit events Claude Code emits.
-- **Voice.** Push-to-talk in: press `MIC`, speak, press again, and the clip is transcribed locally by Whisper in the sidecar (the browser's own recognizer is the fallback). Out, the same sidecar speaks with Kokoro, or the browser's voices without it. Replies are read as they arrive, chunked at tool calls.
+- **Voice.** Push-to-talk in: hold `MIC` or the space bar while you speak (a quick tap on `MIC` toggles instead), and the clip is transcribed locally by Whisper in the sidecar (the browser's own recognizer is the fallback). Out, the same sidecar speaks with Kokoro, or the browser's voices without it. Replies are read as they arrive, chunked at tool calls.
 
 ## How it fits together
 
