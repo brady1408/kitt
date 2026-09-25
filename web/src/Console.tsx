@@ -214,7 +214,7 @@ export function Console() {
       </div>
 
       <footer className="mx-auto mt-4 flex w-full max-w-[1600px] items-center justify-between border-t border-border pt-2 font-mono text-[9px] uppercase text-muted-foreground">
-        <span>{state.connected ? 'All systems operational' : 'Reconnecting…'}</span><span className="hidden sm:inline">Encrypted channel / Agent mesh connected</span><span className="text-primary">KITT-OS 4.18</span>
+        <span>{state.connected ? 'All systems operational' : 'Reconnecting…'}</span><span className="hidden sm:inline">Encrypted channel / Agent mesh connected</span><span className="flex items-center gap-3"><a href="https://ko-fi.com/bradycole" target="_blank" rel="noreferrer" className="transition-colors hover:text-amber" title="Support the build on Ko-fi">Fuel the build · Ko-fi</a><span className="text-primary">KITT-OS 4.18</span></span>
       </footer>
     </div>
   )
