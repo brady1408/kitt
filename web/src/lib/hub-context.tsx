@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react'
-import type { ChatMessage } from '@kitt/hub/protocol'
+import type { ChatMessage, ServerFrame } from '@kitt/hub/protocol'
 import { HubClient, defaultHubUrl } from './hub'
 import { initialState, reduce, type HubState } from './hub-store'
 
@@ -11,6 +11,7 @@ type Actions = {
   cancelTask(id: string): void
   deleteTask(id: string): void
   onDone(l: (message: ChatMessage) => void): () => void
+  onFrame(l: (frame: ServerFrame) => void): () => void
   dismissError(): void
 }
 
@@ -20,6 +21,7 @@ export function HubProvider({ children, url }: { children: ReactNode; url?: stri
   const [state, dispatch] = useReducer(reduce, initialState)
   const clientRef = useRef<HubClient | null>(null)
   const doneListeners = useRef(new Set<(m: ChatMessage) => void>())
+  const frameListeners = useRef(new Set<(f: ServerFrame) => void>())
 
   useEffect(() => {
     const client = new HubClient(url ?? defaultHubUrl())
@@ -27,6 +29,7 @@ export function HubProvider({ children, url }: { children: ReactNode; url?: stri
     const offFrame = client.onFrame((frame) => {
       dispatch({ type: 'frame', frame })
       if (frame.type === 'chat.done') for (const l of doneListeners.current) l(frame.message)
+      for (const l of frameListeners.current) l(frame)
     })
     const offStatus = client.onStatus((value) => dispatch({ type: 'connected', value }))
     client.connect()
@@ -41,6 +44,7 @@ export function HubProvider({ children, url }: { children: ReactNode; url?: stri
     cancelTask: (id) => clientRef.current?.send({ type: 'task.cancel', id }),
     deleteTask: (id) => clientRef.current?.send({ type: 'task.delete', id }),
     onDone: (l) => { doneListeners.current.add(l); return () => { doneListeners.current.delete(l) } },
+    onFrame: (l) => { frameListeners.current.add(l); return () => { frameListeners.current.delete(l) } },
     dismissError: () => dispatch({ type: 'dismissError' }),
   }), [])
 

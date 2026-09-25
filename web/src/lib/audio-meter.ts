@@ -85,9 +85,10 @@ export function watchMediaElements() {
   return () => mo.disconnect();
 }
 
-export function speak(text: string) {
+export function speak(text: string, { queue = false }: { queue?: boolean } = {}) {
   if (!("speechSynthesis" in window)) return;
-  const clean = text.replace(/[*#`_>\[\]()]/g, "");
+  const clean = text.replace(/[*#`_>\[\]()]/g, "").trim();
+  if (!clean) return;
   const u = new SpeechSynthesisUtterance(clean);
   const voices = speechSynthesis.getVoices();
   u.voice = voices.find((v) => /en-GB/i.test(v.lang) && /male|daniel|george|arthur/i.test(v.name)) ?? voices.find((v) => /en-GB/i.test(v.lang)) ?? null;
@@ -95,6 +96,6 @@ export function speak(text: string) {
   u.pitch = 0.9;
   u.onstart = () => setSpeaking(true);
   u.onend = u.onerror = () => setSpeaking(false);
-  speechSynthesis.cancel();
+  if (!queue) speechSynthesis.cancel();
   speechSynthesis.speak(u);
 }

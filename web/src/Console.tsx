@@ -9,6 +9,7 @@ import { getLevel, resumeAudio, speak, startMic, stopMic, watchMediaElements } f
 import { useHub } from '@/lib/hub-context'
 import { radarLayout } from '@/lib/radar'
 import { deriveLamps, type Lamp } from '@/lib/lamps'
+import { createNarrator } from '@/lib/narrator'
 import type { ActivityEvent } from '@/lib/hub-store'
 import { VoiceModule, type SendMode } from '@/components/VoiceModule'
 
@@ -51,9 +52,14 @@ export function Console() {
   })
 
   useEffect(() => watchMediaElements(), [])
-  useEffect(() => actions.onDone((msg) => {
-    if (voiceRef.current && msg.target === targetRef.current && msg.text) speak(msg.text)
-  }), [actions])
+  useEffect(() => {
+    const narrator = createNarrator({
+      speak: (text) => speak(text, { queue: true }),
+      enabled: () => voiceRef.current,
+      target: () => targetRef.current,
+    })
+    return actions.onFrame((frame) => narrator.handle(frame))
+  }, [actions])
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [messages, live])
