@@ -21,7 +21,7 @@ const MAX_BACKOFF_MS = 10_000
 const log = (s: string) => process.stderr.write(`kitt channel: ${s}\n`)
 // Claude Code spawns user-scope MCP servers inside the hub's own SDK sessions too. Channel
 // pushes never reach those, so the spoke stays inert there: no tools, no hub registration.
-const SDK_SESSION = process.env['CLAUDE_CODE_ENTRYPOINT'] === 'sdk-cli'
+const SDK_SESSION = /^sdk-/.test(process.env['CLAUDE_CODE_ENTRYPOINT'] ?? '') || Boolean(process.env['CLAUDE_AGENT_SDK_VERSION'])
 
 let ws: WebSocket | null = null
 let backoff = 500

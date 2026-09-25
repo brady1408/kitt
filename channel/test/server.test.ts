@@ -87,7 +87,7 @@ test('a spoke spawned by an SDK-driven session exposes no tools and never regist
       ...process.env as Record<string, string>,
       KITT_HUB_URL: `ws://127.0.0.1:${hub.port}/spoke`,
       CLAUDE_CODE_SESSION_ID: 'sess-sdk',
-      CLAUDE_CODE_ENTRYPOINT: 'sdk-cli',
+      CLAUDE_CODE_ENTRYPOINT: 'sdk-ts',
       CLAUDE_PROJECT_DIR: '/home/brady/pa',
       CLAUDE_PID: '1',
     },
