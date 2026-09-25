@@ -177,7 +177,7 @@ export function Console() {
             {live && (
               <div className="flex gap-3">
                 <span className="mt-1 h-2 w-2 shrink-0 animate-pulse bg-primary shadow-signal" />
-                <div className="prose prose-invert min-w-0 max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere] prose-pre:whitespace-pre-wrap prose-code:break-all">
+                <div className="prose prose-invert min-w-0 max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere]">
                   <span className="mb-1 block font-display text-sm text-primary">K.I.T.T. / RESPONSE</span>
                   {live.tools.map((t, i) => <ToolLine key={i} summary={t} />)}
                   {live.text ? <Markdown>{live.text}</Markdown> : <p className="animate-pulse font-mono text-xs uppercase text-amber">Processing command…</p>}
@@ -356,7 +356,7 @@ function MessageRow({ message }: { message: ChatMessage }) {
   return (
     <div className="flex gap-3">
       <span className="mt-1 h-2 w-2 shrink-0 bg-primary shadow-signal" />
-      <div className="prose prose-invert min-w-0 max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere] prose-pre:whitespace-pre-wrap prose-code:break-all">
+      <div className="prose prose-invert min-w-0 max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere]">
         <span className="mb-1 block font-display text-sm text-primary">K.I.T.T. / RESPONSE</span>
         <Markdown>{message.text}</Markdown>
       </div>
@@ -454,7 +454,7 @@ function TaskPanel({ cwd, onCwd, defaultDir }: { cwd: string; onCwd: (v: string)
                 : <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => actions.deleteTask(task.id)} aria-label="Remove task"><Trash2 /></Button>}
             </div>
             {open === task.id && (
-              <div className="prose prose-invert max-w-none break-words border-t border-border p-3 text-xs [overflow-wrap:anywhere] prose-pre:whitespace-pre-wrap prose-code:break-all">
+              <div className="prose prose-invert max-w-none break-words border-t border-border p-3 text-xs [overflow-wrap:anywhere]">
                 <p className="font-mono text-[10px] uppercase text-muted-foreground">{task.status} · {task.cwd}</p>
                 <Markdown>{task.output || '_Agent working…_'}</Markdown>
                 {task.status === 'done' && <Button variant="link" size="sm" className="mt-1 px-0" onClick={() => { resumeAudio(); kittVoice.cancel(); kittVoice.speak(task.output) }}><Volume2 />Read aloud</Button>}

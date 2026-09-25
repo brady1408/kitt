@@ -172,6 +172,13 @@ html, body { overflow-x: hidden; }
 *::-webkit-scrollbar-thumb:hover { background: color-mix(in oklab, var(--primary) 60%, transparent); }
 *::-webkit-scrollbar-corner { background: transparent; }
 
+/* Markdown in the console never gets to be wider than its panel. */
+.prose { overflow-wrap: anywhere; }
+.prose pre { white-space: pre-wrap; word-break: break-word; max-width: 100%; }
+.prose code { overflow-wrap: anywhere; }
+.prose table { display: block; max-width: 100%; overflow-x: auto; }
+.prose img { max-width: 100%; height: auto; }
+
 @utility panel-cut {
   position: relative;
   clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
