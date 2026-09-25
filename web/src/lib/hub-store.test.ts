@@ -139,3 +139,17 @@ test('activity is capped at 200 entries', () => {
   expect(s.activity).toHaveLength(200)
   expect(s.activity[0]?.text).toBe('Read 204')
 })
+
+test('the reducer works on insecure origins where crypto.randomUUID is unavailable', () => {
+  const original = crypto.randomUUID
+  ;(crypto as { randomUUID?: unknown }).randomUUID = undefined
+  try {
+    const s = apply(initialState,
+      { type: 'chat.tool', target: 'kitt', turnId: 't', name: 'Bash', summary: 'Bash pwd' },
+      { type: 'chat.system', target: 'kitt', text: 'hello' })
+    expect(s.activity).toHaveLength(2)
+    expect(new Set([...s.activity.map((a) => a.id), ...(s.messages['kitt'] ?? []).map((m) => m.id)]).size).toBe(3)
+  } finally {
+    crypto.randomUUID = original
+  }
+})

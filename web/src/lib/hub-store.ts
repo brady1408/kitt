@@ -12,6 +12,10 @@ export type ActivityEvent = {
 }
 const ACTIVITY_CAP = 200
 
+// crypto.randomUUID is unavailable on insecure origins (the console is plain http on the LAN).
+let seq = 0
+const localId = () => `${Date.now().toString(36)}-${(++seq).toString(36)}`
+
 export type HubState = {
   connected: boolean
   registry: SessionEntry[]
@@ -43,7 +47,7 @@ function append(state: HubState, target: string, ...items: ChatMessage[]): HubSt
 }
 
 const event = (kind: ActivityEvent['kind'], text: string, tone: ActivityEvent['tone'], sessionId?: string): ActivityEvent =>
-  ({ id: crypto.randomUUID(), at: Date.now(), kind, text, tone, ...(sessionId ? { sessionId } : {}) })
+  ({ id: localId(), at: Date.now(), kind, text, tone, ...(sessionId ? { sessionId } : {}) })
 
 const PLAN_RANK = { allowed: 0, allowed_warning: 1, rejected: 2 } as const
 const worstPlan = (u: Usage) => {
@@ -148,7 +152,7 @@ function applyFrame(state: HubState, f: ServerFrame): HubState {
     case 'chat.cleared':
       return { ...state, messages: { ...state.messages, [f.target]: [] }, live: { ...state.live, [f.target]: null } }
     case 'chat.system':
-      return append(state, f.target, { id: crypto.randomUUID(), target: f.target, role: 'system', text: f.text, toolSummary: null, createdAt: Date.now() })
+      return append(state, f.target, { id: localId(), target: f.target, role: 'system', text: f.text, toolSummary: null, createdAt: Date.now() })
     case 'task.update': {
       const rest = state.tasks.filter((t) => t.id !== f.task.id)
       return { ...state, tasks: [...rest, f.task].sort((a, b) => b.createdAt - a.createdAt) }
