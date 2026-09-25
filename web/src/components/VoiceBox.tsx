@@ -54,17 +54,6 @@ export function VoiceBox({ getLevel, frameless = false }: { getLevel: () => numb
   );
 }
 
-export function Scanner({ state }: { state: "busy" | "idle" | "offline" }) {
-  const label = state === "busy" ? "Sessions working" : state === "idle" ? "All sessions idle" : "Hub link lost";
-  return (
-    <div className="relative h-1.5 w-full overflow-hidden bg-secondary" role="status" aria-label={label} title={label}>
-      {state === "busy" && <div className="kitt-sweep absolute top-0 h-full w-[22%] bg-primary shadow-signal" />}
-      {state === "idle" && <div className="absolute inset-y-0 left-0 w-1/3 bg-primary/45" />}
-      {state === "offline" && <div className="absolute inset-y-0 left-0 w-1/3 bg-muted-foreground/30" />}
-    </div>
-  );
-}
-
 export function FrontScanner() {
   return (
     <div className="kitt-front-shell" role="img" aria-label="K.I.T.T. red scanner sweeping from side to side">

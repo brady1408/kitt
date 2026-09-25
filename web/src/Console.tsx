@@ -3,7 +3,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Activity, Bot, ChevronDown, Gauge, Play, Radio, Send, Square, Trash2, Volume2, X } from 'lucide-react'
 import type { ChatMessage, PlanWindow, SessionEntry, Task } from '@kitt/hub/protocol'
 import { Button } from '@/components/ui/button'
-import { FrontScanner, Scanner } from '@/components/VoiceBox'
+import { FrontScanner } from '@/components/VoiceBox'
+import { ActivityBar } from '@/components/ActivityBar'
 import { getLevel, resumeAudio, speak, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
 import { useHub } from '@/lib/hub-context'
 import { radarLayout } from '@/lib/radar'
@@ -107,7 +108,6 @@ export function Console() {
   }
 
   const activeCount = state.registry.filter((e) => e.status === 'working').length
-  const anyWorking = activeCount > 0 || Object.values(state.live).some((l) => l !== null)
 
   return (
     <div className="console-grid relative min-h-screen overflow-hidden bg-background p-3 text-foreground md:p-5 xl:flex xl:h-screen xl:flex-col">
@@ -117,7 +117,7 @@ export function Console() {
           <div className={`h-2 w-2 ${state.connected ? 'animate-pulse bg-primary shadow-signal' : 'bg-destructive'}`} />
           <div><h1 className="font-display text-3xl leading-none text-primary">K.I.T.T.</h1><p className="truncate text-[9px] uppercase text-muted-foreground">Knight Industries Two Thousand</p></div>
         </div>
-        <div className="hidden w-52 sm:block"><Scanner state={!state.connected ? 'offline' : anyWorking ? 'busy' : 'idle'} /></div>
+        <div className="hidden w-56 sm:block"><ActivityBar registry={state.registry} connected={state.connected} /></div>
         <div className="text-right font-mono text-[9px] uppercase text-muted-foreground"><p className={state.connected ? 'text-green' : 'text-primary'}>{state.connected ? 'Neural link active' : 'Neural link lost'}</p><p>Console / 04.18</p></div>
       </header>
 
