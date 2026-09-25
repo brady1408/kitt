@@ -1,31 +1,128 @@
 # KITT
 
-LAN-only K.I.T.T. console for the Claude Code sessions on ubuntu-vm.
+A K.I.T.T.-styled web console for [Claude Code](https://code.claude.com). It puts a persistent Claude Code session behind a dashboard on your LAN, runs background tasks as their own sessions, and lets you message the interactive `claude` terminals you already have open.
 
-- `hub/` Bun server: KITT session + task sessions via the Claude Agent SDK, registry, SQLite, WebSocket protocol, serves `web/dist`.
-- `channel/` MCP channel "spoke" that attaches an interactive `claude` session to the hub.
-- `web/` Vite React console (design lives in `kitt-os-assistant`, ported by hand).
+![The KITT console](docs/console.png)
 
-## Run
+Everything runs on the machine where Claude Code is installed and logged in. Nothing leaves your network, and it uses your existing Claude subscription, no API key.
 
-    bun install
-    bun run web:build
-    bun run hub            # http://<vm-ip>:7331
+## What it does
 
-Dev loop for the UI: `bun run hub` in one terminal, `bun run web:dev` in another (port 5173 proxies `/ws`).
+- **Talk to KITT.** The center panel is a real Claude Code session, started in a directory of your choosing so it inherits that project's `CLAUDE.md`, memory, plugins and MCP servers. Replies stream in, tool calls show as one-line entries, and replies are read aloud as they arrive. The session survives page reloads and hub restarts.
+- **Dispatch background tasks.** Each task is a one-shot Claude Code session in a directory you pick. Up to three run at once; the rest queue.
+- **Reach your terminals.** Any interactive `claude` session launched through the `ck` wrapper appears on the radar and in the Agent network panel. Pick it and your messages are pushed into that terminal; its replies come back to the console.
+- **See the machine.** System status shows real CPU load, memory, drive space and the last API round-trip. Agent metrics shows the session's context usage and your plan's five-hour and seven-day windows, straight from the rate-limit events Claude Code emits.
+- **Voice.** Browser speech recognition in, browser speech synthesis out. Chrome works best.
 
-## Attach a terminal session
+## How it fits together
 
-    claude mcp add --scope user kitt -- bun run ~/ws/kitt/channel/server.ts   # once
-    ck                       # = KITT_CHANNEL=1 claude --dangerously-load-development-channels server:kitt
+```
+kitt/
+  hub/       Bun server. Owns the sessions (Claude Agent SDK), the registry, SQLite
+             history, one WebSocket protocol to browsers, and serves web/dist.
+  channel/   A Claude Code "channel" MCP server (the spoke). Claude Code spawns it
+             inside interactive sessions; it dials the hub and relays messages.
+  web/       Vite + React console. Pure client; everything it shows comes over the socket.
+```
 
-Plain `claude` sessions also spawn the spoke (it is a user-scope MCP server) but it stays inert there: no tools, no registration.
+The hub drives the KITT session and task sessions directly through the [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk). Interactive terminals are reached through [channels](https://code.claude.com/docs/en/channels), Claude Code's mechanism for pushing events into a running session, which is what the Discord and Telegram plugins use.
 
-## Service
+## Requirements
 
-`deploy/kitt-hub.service` is a systemd user unit; see the file for install steps.
+- [Bun](https://bun.sh) 1.3 or newer
+- Claude Code 2.1.282 or newer, installed and logged in on the same machine
+- A browser on the same LAN (Chrome for voice input)
 
-## Tests
+## Install
 
-    bun test
-    bun run typecheck
+```sh
+git clone https://github.com/brady1408/kitt.git ~/ws/kitt
+cd ~/ws/kitt
+bun install
+bun run web:build
+bun run hub
+```
+
+Open `http://<this-machine's-ip>:7331`. The KITT session starts in `~/pa` by default; point it somewhere else with `KITT_PA_DIR`.
+
+### Run it as a service
+
+`deploy/kitt-hub.service` is a systemd user unit. Edit the paths in it for your user, then:
+
+```sh
+ln -s ~/ws/kitt/deploy/kitt-hub.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now kitt-hub
+loginctl enable-linger $USER      # keep it running when you log out
+```
+
+### Attach your terminals
+
+Register the spoke once as a user-scope MCP server, then launch terminals you want in the console with `ck` instead of `claude`:
+
+```sh
+claude mcp add --scope user kitt -- bun run ~/ws/kitt/channel/server.ts
+ln -s ~/ws/kitt/scripts/ck ~/.local/bin/ck
+ck                     # any claude arguments pass through, e.g. ck --resume <id>
+```
+
+`ck` sets `KITT_CHANNEL=1` and passes `--dangerously-load-development-channels server:kitt`. Channels are a research-preview feature, so Claude Code asks you to confirm once per launch. Plain `claude` sessions also spawn the spoke, since it is a user-scope server, but it stays inert there: no tools, no registration.
+
+## Using the console
+
+**Send modes.** The three plates under the voice matrix decide where what you type goes:
+
+| Plate | Goes to |
+|---|---|
+| `NORMAL CRUISE` | The KITT session |
+| `AUTO CRUISE` | A new background task, in the directory set in the Task queue panel |
+| `PURSUIT` | The selected terminal. Clicking a terminal on the radar, in Agent network, or in the activity log selects it and switches to this mode |
+
+**Lamps.** `VOICE` and `MIC` are controls. `LINK`, `PLAN`, `DISK`, `LOAD`, `MEM` and `API` light red as alarms. `AUX` and `SAT COMM` light yellow with a count while tasks are running or terminals are online.
+
+**Header bar.** One LED segment per session: dim when idle, bright and pulsing while working, red on error, grey when the hub link is lost.
+
+**Signal field.** A radar of live sessions over a log of recent activity: tool calls, task and terminal state changes, plan and disk thresholds, link changes.
+
+The trash icon in the Comms control title clears the KITT conversation and starts a fresh session.
+
+## Configuration
+
+Hub environment variables:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `KITT_PORT` | `7331` | Listen port |
+| `KITT_HOST` | `0.0.0.0` | Bind address |
+| `KITT_DATA_DIR` | `~/.local/share/kitt` | SQLite database location |
+| `KITT_PA_DIR` | `~/pa` | Working directory of the KITT session and default for tasks |
+
+Spoke environment variables: `KITT_HUB_URL` (default `ws://127.0.0.1:7331/spoke`) and `KITT_CHANNEL` (set to `1` by `ck`).
+
+The KITT persona and the task prompt live in `hub/src/persona.ts`.
+
+## Security
+
+This is built for a trusted LAN and nothing more.
+
+- There is no authentication. Anyone who can reach the port can talk to KITT and dispatch tasks.
+- The KITT and task sessions run with Claude Code permissions bypassed. They can do anything your shell can.
+- The browser socket refuses cross-origin upgrades, so a web page you visit elsewhere cannot drive the hub. Spokes are accepted from loopback only.
+- Task working directories must be inside your home directory.
+
+Do not expose the port to the internet.
+
+## Development
+
+```sh
+bun run hub          # hub on :7331, serving web/dist
+bun run web:dev      # Vite on :5173 with /ws proxied to the hub, for UI work
+bun test             # hub, channel and web tests
+bun run typecheck    # all three packages
+```
+
+The console design was started in [Lovable](https://lovable.dev) and ported by hand; the design sandbox lives in a separate repository. The hub-to-browser protocol is defined once in `hub/src/protocol.ts` and imported by the web package.
+
+## Status
+
+v1. Working and in daily use on one machine. Known rough edges are tracked in the project notes rather than here; the notable ones are that the `API` lamp trips on long tool-heavy turns, and that server-side voice is not built yet, so speech quality is whatever your browser provides.
