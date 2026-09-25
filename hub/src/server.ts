@@ -96,6 +96,8 @@ export function createHub(deps: HubDeps): { port: number; stop(): void } {
   const server = Bun.serve<ConnData>({
     port: deps.port,
     hostname: deps.hostname,
+    // Synthesizing a long paragraph can take well over Bun's 10 s default.
+    idleTimeout: 120,
     fetch(req, srv): Response | undefined | Promise<Response> {
       const url = new URL(req.url)
       if (url.pathname === '/healthz') return new Response('ok')
