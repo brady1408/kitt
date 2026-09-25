@@ -1,5 +1,4 @@
 import { parseVoiceChoice, pickVoice } from "./voice";
-import { bandLevels } from "./spectrum";
 /**
  * Global audio meter. Any audio the app outputs (speech, <audio>/<video> elements)
  * or captures (mic) feeds a level (0..1) that the voice box renders.
@@ -7,7 +6,6 @@ import { bandLevels } from "./spectrum";
 let ctx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 let buf: Uint8Array<ArrayBuffer> | null = null;
-let freq: Uint8Array<ArrayBuffer> | null = null;
 let speaking = false; // browser speech synthesis in progress (cannot be tapped, so the envelope is faked)
 const hooked = new WeakSet<HTMLMediaElement>();
 
@@ -16,9 +14,7 @@ function ensure() {
   ctx = new AudioContext();
   analyser = ctx.createAnalyser();
   analyser.fftSize = 512;
-  analyser.smoothingTimeConstant = 0.6;
   buf = new Uint8Array(new ArrayBuffer(analyser.fftSize));
-  freq = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
 }
 
 export function resumeAudio() {
@@ -65,17 +61,7 @@ function fakeEnvelope(): number {
   return 0.25 + syl * (0.6 + Math.random() * 0.25);
 }
 
-/** Per-band levels (low, mid, high) of whatever is playing through the meter: the server voice, or the mic while listening. */
-export function getLevels(): [number, number, number] {
-  if (speaking) {
-    const e = fakeEnvelope();
-    return [Math.min(1, e * 0.8), Math.min(1, e), Math.min(1, e * 0.7)];
-  }
-  if (!analyser || !freq || !ctx) return [0, 0, 0];
-  analyser.getByteFrequencyData(freq);
-  return bandLevels(freq, ctx.sampleRate, analyser.fftSize);
-}
-
+/** Loudness of whatever is playing through the meter: the server voice, or the mic while listening. Browser speech can't be tapped, so it gets a faked envelope. */
 export function getLevel(): number {
   let lvl = 0;
   if (analyser && buf) {
