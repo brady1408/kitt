@@ -58,3 +58,14 @@ test('system lines, errors and connection state', () => {
   expect(s.lastError).toBeNull()
   expect(reduce(s, { type: 'connected', value: true }).connected).toBe(true)
 })
+
+test('chat.cleared drops that target\'s messages and live turn only', () => {
+  let s = apply(initialState,
+    { type: 'chat.user', message: msg({ role: 'user', text: 'hi', target: 'kitt' }) },
+    { type: 'chat.user', message: msg({ role: 'user', text: 'yo', target: 'spoke:1' }) },
+    { type: 'chat.delta', target: 'kitt', turnId: 't', text: 'partial' })
+  s = apply(s, { type: 'chat.cleared', target: 'kitt' })
+  expect(s.messages['kitt']).toEqual([])
+  expect(s.live['kitt']).toBeNull()
+  expect(s.messages['spoke:1']?.map((m) => m.text)).toEqual(['yo'])
+})

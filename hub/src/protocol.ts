@@ -72,6 +72,7 @@ export const ServerFrame = z.discriminatedUnion('type', [
   z.object({ type: z.literal('chat.tool'), target: z.string(), turnId: z.string(), name: z.string(), summary: z.string() }),
   z.object({ type: z.literal('chat.done'), target: z.string(), turnId: z.string(), message: ChatMessage, usage: TurnUsage.nullable() }),
   z.object({ type: z.literal('chat.system'), target: z.string(), text: z.string() }),
+  z.object({ type: z.literal('chat.cleared'), target: z.string() }),
   z.object({ type: z.literal('task.update'), task: Task }),
   z.object({ type: z.literal('usage.update'), usage: Usage }),
   z.object({ type: z.literal('error'), code: z.string(), text: z.string(), ref: z.string().optional() }),

@@ -57,6 +57,7 @@ export class KittSession {
     this.deps.store.clearMessages(KITT_TARGET)
     this.deps.store.kvSet(SESSION_KEY, '')
     this.launch(undefined)
+    this.deps.emit({ type: 'chat.cleared', target: KITT_TARGET })
     this.deps.emit({ type: 'chat.system', target: KITT_TARGET, text: 'Fresh session started.' })
     this.deps.emit({ type: 'usage.update', usage: this.usage() })
   }

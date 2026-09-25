@@ -67,6 +67,8 @@ export function reduce(state: HubState, action: HubAction): HubState {
       const next = append(state, f.target, ...toolLines, f.message)
       return { ...next, live: { ...next.live, [f.target]: null } }
     }
+    case 'chat.cleared':
+      return { ...state, messages: { ...state.messages, [f.target]: [] }, live: { ...state.live, [f.target]: null } }
     case 'chat.system':
       return append(state, f.target, { id: crypto.randomUUID(), target: f.target, role: 'system', text: f.text, toolSummary: null, createdAt: Date.now() })
     case 'task.update': {

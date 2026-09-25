@@ -114,3 +114,14 @@ test('a runner stream that ends without an exit event is treated as an exit', as
   expect(s.calls).toHaveLength(2)
   expect(s.runners[1]!.sent).toEqual(['again'])
 })
+
+test('clear tells browsers to drop the KITT history before announcing the fresh session', async () => {
+  const s = setup()
+  s.kitt.send('x')
+  s.kitt.clear()
+  const types = s.frames.map((f) => f.type)
+  const cleared = types.indexOf('chat.cleared')
+  expect(cleared).toBeGreaterThan(-1)
+  expect(s.frames[cleared]).toEqual({ type: 'chat.cleared', target: 'kitt' })
+  expect(types.indexOf('chat.system')).toBeGreaterThan(cleared)
+})
