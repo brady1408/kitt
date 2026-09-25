@@ -131,3 +131,21 @@ test('interrupt swallows a rejecting runner instead of crashing the hub', async 
   s.runners[0]!.interrupt = async () => { throw new Error('transport closed') }
   await expect(s.kitt.interrupt()).resolves.toBeUndefined()
 })
+
+test('context metric survives a hub restart and resets on clear', async () => {
+  const first = setup()
+  first.kitt.send('hi')
+  first.runners[0]!.emit({ type: 'init', sessionId: 's', model: 'claude-haiku-4-5' }); await tick()
+  first.runners[0]!.emit({ type: 'result', ok: true, text: 'r', usage: { input: 100, output: 1, cacheRead: 900, cacheCreate: 0 }, costUsd: 0 }); await tick()
+  expect(first.kitt.usage()).toMatchObject({ context: 1000, contextWindow: 200_000 })
+  // a new hub process over the same store
+  const registry = new Registry(); const { factory } = fakeFactory()
+  const second = new KittSession({ factory, store: first.store, registry, cwd: '/tmp/pa', persona: 'p', emit: () => {} })
+  second.start()
+  expect(second.usage()).toMatchObject({ context: 1000, contextWindow: 200_000 })
+  second.clear()
+  expect(second.usage().context).toBe(0)
+  const third = new KittSession({ factory, store: first.store, registry, cwd: '/tmp/pa', persona: 'p', emit: () => {} })
+  third.start()
+  expect(third.usage().context).toBe(0)
+})

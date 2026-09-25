@@ -1,4 +1,4 @@
-import ReactMarkdown from 'react-markdown'
+import { Markdown } from '@/components/Markdown'
 import { useEffect, useRef, useState } from 'react'
 import { Activity, Bot, ChevronDown, Gauge, Mic, MicOff, Play, Radio, Send, Square, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import type { ChatMessage, SessionEntry, Task } from '@kitt/hub/protocol'
@@ -128,7 +128,7 @@ export function Console() {
                 <div className="prose prose-invert max-w-none text-sm text-foreground">
                   <span className="mb-1 block font-display text-sm text-primary">K.I.T.T. / RESPONSE</span>
                   {live.tools.map((t, i) => <ToolLine key={i} summary={t} />)}
-                  {live.text ? <ReactMarkdown>{live.text}</ReactMarkdown> : <p className="animate-pulse font-mono text-xs uppercase text-accent">Processing command…</p>}
+                  {live.text ? <Markdown>{live.text}</Markdown> : <p className="animate-pulse font-mono text-xs uppercase text-accent">Processing command…</p>}
                 </div>
               </div>
             )}
@@ -197,7 +197,7 @@ function MessageRow({ message }: { message: ChatMessage }) {
       <span className="mt-1 h-2 w-2 shrink-0 bg-primary shadow-signal" />
       <div className="prose prose-invert max-w-none text-sm text-foreground">
         <span className="mb-1 block font-display text-sm text-primary">K.I.T.T. / RESPONSE</span>
-        <ReactMarkdown>{message.text}</ReactMarkdown>
+        <Markdown>{message.text}</Markdown>
       </div>
     </div>
   )
@@ -274,7 +274,7 @@ function TaskPanel() {
             {open === task.id && (
               <div className="prose prose-invert max-w-none border-t border-border p-3 text-xs">
                 <p className="font-mono text-[10px] uppercase text-muted-foreground">{task.status} · {task.cwd}</p>
-                <ReactMarkdown>{task.output || '_Agent working…_'}</ReactMarkdown>
+                <Markdown>{task.output || '_Agent working…_'}</Markdown>
                 {task.status === 'done' && <Button variant="link" size="sm" className="mt-1 px-0" onClick={() => speak(task.output)}><Volume2 />Read aloud</Button>}
               </div>
             )}

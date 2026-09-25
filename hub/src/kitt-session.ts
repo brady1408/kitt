@@ -9,6 +9,8 @@ import { KITT_TARGET } from './protocol'
 const H5 = 5 * 3600e3
 const D7 = 7 * 864e5
 export const SESSION_KEY = 'kitt_session_id'
+const CONTEXT_KEY = 'kitt_last_context'
+const MODEL_KEY = 'kitt_model'
 
 export type KittDeps = {
   factory: RunnerFactory
@@ -33,6 +35,8 @@ export class KittSession {
   constructor(private deps: KittDeps) {}
 
   start(): void {
+    this.lastContext = Number(this.deps.store.kvGet(CONTEXT_KEY)) || 0
+    this.model = this.deps.store.kvGet(MODEL_KEY) ?? ''
     this.launch(this.storedSessionId())
   }
 
@@ -56,6 +60,7 @@ export class KittSession {
     this.lastContext = 0
     this.deps.store.clearMessages(KITT_TARGET)
     this.deps.store.kvSet(SESSION_KEY, '')
+    this.deps.store.kvSet(CONTEXT_KEY, '')
     this.launch(undefined)
     this.deps.emit({ type: 'chat.cleared', target: KITT_TARGET })
     this.deps.emit({ type: 'chat.system', target: KITT_TARGET, text: 'Fresh session started.' })
@@ -121,6 +126,7 @@ export class KittSession {
       switch (ev.type) {
         case 'init':
           this.model = ev.model
+          this.deps.store.kvSet(MODEL_KEY, ev.model)
           if (!this.sawInit) {
             this.sawInit = true
             this.deps.store.kvSet(SESSION_KEY, ev.sessionId)
@@ -162,6 +168,7 @@ export class KittSession {
     const contextTokens = usage.input + usage.cacheRead + usage.cacheCreate
     this.deps.store.recordUsage('kitt', contextTokens, usage.output)
     this.lastContext = contextTokens
+    this.deps.store.kvSet(CONTEXT_KEY, String(contextTokens))
     this.inFlight = null
     this.deps.registry.patch(KITT_TARGET, { status: ok ? 'idle' : 'error' })
     this.deps.emit({ type: 'chat.done', target: KITT_TARGET, turnId: turn.turnId, message: msg, usage })
