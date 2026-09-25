@@ -8,6 +8,7 @@ import { getLevel, resumeAudio, speak, startMic, stopMic, watchMediaElements } f
 import { useHub } from '@/lib/hub-context'
 import { radarLayout } from '@/lib/radar'
 import { deriveLamps, type Lamp } from '@/lib/lamps'
+import type { ActivityEvent } from '@/lib/hub-store'
 import { VoiceModule, type SendMode } from '@/components/VoiceModule'
 
 const KITT = 'kitt'
@@ -132,7 +133,7 @@ export function Console() {
             ))}
             {state.registry.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No sessions online.</p>}
           </section>
-          <SignalField registry={state.registry} target={target} onSelect={(id) => { const e = state.registry.find((x) => x.id === id); if (e) selectSession(e) }} />
+          <SignalField registry={state.registry} activity={state.activity} target={target} onSelect={(id) => { const e = state.registry.find((x) => x.id === id); if (e) selectSession(e) }} />
         </aside>
 
         <main className="flex min-h-[720px] flex-col overflow-hidden border border-border bg-card/75 panel-cut xl:min-h-0">
@@ -217,13 +218,19 @@ function SystemPanel({ connected, planStatus }: { connected: boolean; planStatus
 
 const RADAR = { inner: 0.42, outer: 0.86 }
 
-function SignalField({ registry, target, onSelect }: { registry: SessionEntry[]; target: string; onSelect: (id: string) => void }) {
+const ACTIVITY_DOT: Record<ActivityEvent['tone'], string> = {
+  amber: 'bg-amber', green: 'bg-green', red: 'bg-primary shadow-signal', muted: 'bg-muted-foreground/50',
+}
+const clock = (at: number) => new Date(at).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
+function SignalField({ registry, activity, target, onSelect }: { registry: SessionEntry[]; activity: ActivityEvent[]; target: string; onSelect: (id: string) => void }) {
   const blips = radarLayout(registry, RADAR)
   const contacts = registry.filter((e) => e.status !== 'offline').length
+  const known = new Set(registry.map((e) => e.id))
   return (
-    <section className="relative h-44 overflow-hidden border border-border bg-card/75 p-3 panel-cut xl:h-auto xl:min-h-44 xl:flex-1">
+    <section className="flex flex-col overflow-hidden border border-border bg-card/75 p-3 panel-cut xl:min-h-0 xl:flex-1">
       <PanelTitle icon={Radio} status={`${contacts} contact${contacts === 1 ? '' : 's'}`}>Signal field</PanelTitle>
-      <div className="absolute left-1/2 top-[58%] aspect-square h-[60%] max-h-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25">
+      <div className="relative mx-auto mb-3 h-28 w-28 shrink-0 rounded-full border border-primary/25">
         <div className="absolute inset-[16%] rounded-full border border-dashed border-primary/30" />
         <div className="radar-sweep absolute left-1/2 top-1/2 h-px w-1/2 origin-left bg-primary shadow-signal" />
         {blips.map(({ entry, x, y }) => (
@@ -239,6 +246,26 @@ function SignalField({ registry, target, onSelect }: { registry: SessionEntry[];
           />
         ))}
       </div>
+      <ul className="min-h-0 max-h-40 flex-1 space-y-1 overflow-y-auto border-t border-border pt-2 font-mono text-[10px] uppercase xl:max-h-none" aria-label="Recent activity">
+        {activity.length === 0 && <li className="py-3 text-center normal-case text-muted-foreground">No signals yet.</li>}
+        {activity.map((a) => {
+          const selectable = a.sessionId !== undefined && known.has(a.sessionId) && a.kind !== 'task'
+          const row = (
+            <>
+              <span className="w-[4.2rem] shrink-0 text-muted-foreground">{clock(a.at)}</span>
+              <span className={`mt-1 h-1.5 w-1.5 shrink-0 ${ACTIVITY_DOT[a.tone]}`} />
+              <span className="min-w-0 truncate text-foreground/85">{a.text}</span>
+            </>
+          )
+          return (
+            <li key={a.id}>
+              {selectable
+                ? <button type="button" onClick={() => onSelect(a.sessionId!)} className="flex w-full items-start gap-2 text-left hover:text-primary">{row}</button>
+                : <div className="flex items-start gap-2">{row}</div>}
+            </li>
+          )
+        })}
+      </ul>
     </section>
   )
 }
