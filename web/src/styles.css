@@ -160,12 +160,10 @@
 }
 
 @keyframes kitt-sweep { 0% { transform: translateX(-120%); } 50% { transform: translateX(450%); } 100% { transform: translateX(-120%); } }
-@keyframes signal-pulse { 0%, 100% { opacity: .3; transform: scaleY(.45); } 50% { opacity: 1; transform: scaleY(1); } }
 @keyframes data-drift { from { transform: translateX(-45%); } to { transform: translateX(180%); } }
 @keyframes front-scanner-sweep { 0%, 100% { left: 2%; } 50% { left: 98%; } }
 
 .kitt-sweep { animation: kitt-sweep 1.45s ease-in-out infinite; }
-.signal-bar { transform-origin: bottom; animation: signal-pulse 1.1s ease-in-out infinite; }
 .data-drift { animation: data-drift 3.8s linear infinite; }
 .console-grid { background-image: linear-gradient(color-mix(in oklab, var(--primary) 6%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklab, var(--primary) 6%, transparent) 1px, transparent 1px); background-size: 28px 28px; }
 .scanlines { background-image: linear-gradient(transparent 50%, color-mix(in oklab, var(--background) 40%, transparent) 50%); background-size: 100% 4px; }
@@ -181,6 +179,6 @@
 .kitt-front-trail-far-right { left: 3.5rem; width: .8rem; opacity: .22; }
 
 @media (prefers-reduced-motion: reduce) {
-  .kitt-sweep, .signal-bar, .data-drift, .kitt-front-sweep { animation: none; }
+  .kitt-sweep, .data-drift, .kitt-front-sweep { animation: none; }
   .kitt-front-sweep { left: 50%; }
 }

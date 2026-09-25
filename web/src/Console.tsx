@@ -112,7 +112,6 @@ export function Console() {
         </aside>
 
         <main className="flex min-h-[720px] flex-col overflow-hidden border border-border bg-card/75 panel-cut">
-          <div className="border-b border-border p-4"><VoiceBox getLevel={getLevel} /></div>
           {target !== KITT && (
             <div className="flex items-center justify-between border-b border-border bg-primary/10 px-4 py-2 font-mono text-[10px] uppercase">
               <span>Channel → {targetEntry?.name ?? target} <span className="text-muted-foreground">{targetEntry?.cwd}</span>{targetOffline && <span className="ml-2 text-destructive">offline</span>}</span>
@@ -151,9 +150,7 @@ export function Console() {
         <aside className="space-y-4">
           <section className="border border-border bg-card/75 p-3 panel-cut">
             <PanelTitle icon={Radio} status={listening ? 'Listening' : 'Online'}>Comms control</PanelTitle>
-            <div className="mb-3 flex h-20 items-end justify-center gap-1 overflow-hidden border border-border bg-background/50 px-6 pb-3">
-              {[34, 72, 48, 88, 56, 96, 44, 78, 36, 66, 52, 84].map((height, index) => <span key={index} className="signal-bar w-1 bg-primary" style={{ height: `${height}%`, animationDelay: `${index * 70}ms` }} />)}
-            </div>
+            <div className="mb-3"><VoiceBox getLevel={getLevel} /></div>
             <div className="grid grid-cols-2 gap-2">
               <Button variant={listening ? 'default' : 'outline'} onClick={toggleMic}>{listening ? <MicOff /> : <Mic />}{listening ? 'Stop' : 'Talk'}</Button>
               <Button variant="outline" onClick={() => { setVoiceOn(!voiceOn); window.speechSynthesis?.cancel() }}>{voiceOn ? <Volume2 /> : <VolumeX />}Voice</Button>
