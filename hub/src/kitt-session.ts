@@ -137,6 +137,7 @@ export class KittSession {
           return
       }
     }
+    if (runner === this.runner) this.handleExit('runner stream ended')
   }
 
   private finishTurn(resultText: string, usage: TurnUsage, ok: boolean): void {

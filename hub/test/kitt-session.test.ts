@@ -104,3 +104,13 @@ test('interrupt forwards to the runner', async () => {
   await s.kitt.interrupt()
   expect(s.runners[0]!.interrupted).toBe(1)
 })
+
+test('a runner stream that ends without an exit event is treated as an exit', async () => {
+  const s = setup()
+  s.runners[0]!.emit({ type: 'init', sessionId: 'sess-2', model: 'm' }); await tick()
+  s.runners[0]!.close(); await tick()
+  expect(s.registry.get('kitt')?.status).toBe('error')
+  s.kitt.send('again')
+  expect(s.calls).toHaveLength(2)
+  expect(s.runners[1]!.sent).toEqual(['again'])
+})

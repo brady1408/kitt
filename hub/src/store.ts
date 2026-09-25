@@ -63,7 +63,7 @@ export class Store {
   }
 
   listTasks(): Task[] {
-    return this.db.query<TaskRow, []>('SELECT * FROM tasks ORDER BY created_at DESC').all().map(toTask)
+    return this.db.query<TaskRow, []>('SELECT * FROM tasks ORDER BY created_at DESC, rowid DESC').all().map(toTask)
   }
 
   deleteTask(id: string): void {
