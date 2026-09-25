@@ -164,6 +164,8 @@
 @keyframes front-scanner-sweep { 0%, 100% { left: 2%; } 50% { left: 98%; } }
 
 .kitt-sweep { animation: kitt-sweep 1.45s ease-in-out infinite; }
+@keyframes radar-sweep { to { transform: rotate(360deg); } }
+.radar-sweep { animation: radar-sweep 4s linear infinite; }
 .data-drift { animation: data-drift 3.8s linear infinite; }
 .console-grid { background-image: linear-gradient(color-mix(in oklab, var(--primary) 6%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklab, var(--primary) 6%, transparent) 1px, transparent 1px); background-size: 28px 28px; }
 .scanlines { background-image: linear-gradient(transparent 50%, color-mix(in oklab, var(--background) 40%, transparent) 50%); background-size: 100% 4px; }
@@ -179,6 +181,6 @@
 .kitt-front-trail-far-right { left: 3.5rem; width: .8rem; opacity: .22; }
 
 @media (prefers-reduced-motion: reduce) {
-  .kitt-sweep, .data-drift, .kitt-front-sweep { animation: none; }
+  .kitt-sweep, .data-drift, .kitt-front-sweep, .radar-sweep { animation: none; }
   .kitt-front-sweep { left: 50%; }
 }

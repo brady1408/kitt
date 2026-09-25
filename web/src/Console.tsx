@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { FrontScanner, VoiceBox, Scanner } from '@/components/VoiceBox'
 import { getLevel, resumeAudio, speak, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
 import { useHub } from '@/lib/hub-context'
+import { radarLayout } from '@/lib/radar'
 
 const KITT = 'kitt'
 
@@ -96,14 +97,7 @@ export function Console() {
             ))}
             {state.registry.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No sessions online.</p>}
           </section>
-          <section className="relative h-44 overflow-hidden border border-border bg-card/75 p-3 panel-cut">
-            <PanelTitle icon={Radio} status="Scanning">Signal field</PanelTitle>
-            <div className="absolute left-1/2 top-[62%] h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25">
-              <div className="absolute inset-3 rounded-full border border-dashed border-primary/30" />
-              <div className="absolute left-1/2 top-1/2 h-px w-1/2 origin-left -rotate-45 bg-primary shadow-signal" />
-              <div className="absolute left-[66%] top-[25%] h-1.5 w-1.5 animate-pulse bg-accent" />
-            </div>
-          </section>
+          <SignalField registry={state.registry} target={target} onSelect={setTarget} />
         </aside>
 
         <main className="flex min-h-[720px] flex-col overflow-hidden border border-border bg-card/75 panel-cut xl:min-h-0">
@@ -178,6 +172,34 @@ function SystemPanel({ connected, planStatus }: { connected: boolean; planStatus
       <Metric label="Memory buffer" value={s ? pct(s.memUsed) : '—'} width={s ? pct(s.memUsed) : '0%'} />
       <Metric label="Drive space" value={s ? `${pct(s.diskUsed)} · ${s.diskFreeGb} GB free` : '—'} width={s ? pct(s.diskUsed) : '0%'} />
       <Metric label="Secure comms" value={s?.apiMs == null ? (connected ? 'Standing by' : 'Offline') : `${(s.apiMs / 1000).toFixed(1)}s`} width={`${Math.round(apiPct * 100)}%`} />
+    </section>
+  )
+}
+
+const RADAR = { inner: 22, outer: 50 }
+
+function SignalField({ registry, target, onSelect }: { registry: SessionEntry[]; target: string; onSelect: (id: string) => void }) {
+  const blips = radarLayout(registry, RADAR)
+  const contacts = registry.filter((e) => e.status !== 'offline').length
+  return (
+    <section className="relative h-44 overflow-hidden border border-border bg-card/75 p-3 panel-cut">
+      <PanelTitle icon={Radio} status={`${contacts} contact${contacts === 1 ? '' : 's'}`}>Signal field</PanelTitle>
+      <div className="absolute left-1/2 top-[60%] h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25">
+        <div className="absolute inset-[18px] rounded-full border border-dashed border-primary/30" />
+        <div className="radar-sweep absolute left-1/2 top-1/2 h-px w-1/2 origin-left bg-primary shadow-signal" />
+        {blips.map(({ entry, x, y }) => (
+          <button
+            key={entry.id}
+            type="button"
+            title={`${entry.name} · ${entry.status}`}
+            aria-label={`${entry.name}, ${entry.status}`}
+            disabled={entry.kind === 'task'}
+            onClick={() => onSelect(entry.id)}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 disabled:cursor-default ${entry.id === target ? 'h-2.5 w-2.5 ring-1 ring-primary/70 ring-offset-1 ring-offset-background' : 'h-2 w-2'} ${STATUS_DOT[entry.status]}`}
+            style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}
+          />
+        ))}
+      </div>
     </section>
   )
 }
