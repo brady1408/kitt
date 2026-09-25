@@ -53,6 +53,12 @@ export type PlanWindow = z.infer<typeof PlanWindow>
 export const PlanUsageSnapshot = z.object({ fiveHour: PlanWindow.nullable(), sevenDay: PlanWindow.nullable() })
 export type PlanUsageSnapshot = z.infer<typeof PlanUsageSnapshot>
 
+export const SystemStats = z.object({
+  load: z.number(), memUsed: z.number(), diskUsed: z.number(), diskFreeGb: z.number(),
+  apiMs: z.number().nullable(), sampledAt: z.number(),
+})
+export type SystemStats = z.infer<typeof SystemStats>
+
 export const Usage = z.object({
   context: z.number(), contextWindow: z.number(), plan: PlanUsageSnapshot,
 })
@@ -72,7 +78,7 @@ export const ClientFrame = z.discriminatedUnion('type', [
 export type ClientFrame = z.infer<typeof ClientFrame>
 
 export const ServerFrame = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('snapshot'), registry: z.array(SessionEntry), messages: z.array(ChatMessage), tasks: z.array(Task), usage: Usage }),
+  z.object({ type: z.literal('snapshot'), registry: z.array(SessionEntry), messages: z.array(ChatMessage), tasks: z.array(Task), usage: Usage, system: SystemStats }),
   z.object({ type: z.literal('registry.update'), entry: SessionEntry }),
   z.object({ type: z.literal('registry.remove'), id: z.string() }),
   z.object({ type: z.literal('chat.user'), message: ChatMessage }),
@@ -84,6 +90,7 @@ export const ServerFrame = z.discriminatedUnion('type', [
   z.object({ type: z.literal('task.update'), task: Task }),
   z.object({ type: z.literal('task.deleted'), id: z.string() }),
   z.object({ type: z.literal('usage.update'), usage: Usage }),
+  z.object({ type: z.literal('system.update'), stats: SystemStats }),
   z.object({ type: z.literal('error'), code: z.string(), text: z.string(), ref: z.string().optional() }),
 ])
 export type ServerFrame = z.infer<typeof ServerFrame>

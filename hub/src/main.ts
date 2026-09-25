@@ -8,6 +8,7 @@ import { KittSession } from './kitt-session'
 import { TaskManager } from './task-manager'
 import { Spokes } from './spokes'
 import { PlanUsage } from './plan-usage'
+import { SystemMonitor } from './system-monitor'
 import { createHub } from './server'
 import { sdkRunner } from './runner'
 import { KITT_PERSONA, TASK_PROMPT } from './persona'
@@ -25,19 +26,21 @@ const bus = createBus()
 const store = new Store(join(DATA_DIR, 'kitt.db'))
 const registry = new Registry()
 const planUsage = new PlanUsage(store)
+const system = new SystemMonitor()
+system.start(5_000, bus.emit)
 registry.onChange((entry) => bus.emit({ type: 'registry.update', entry }))
 registry.onRemove((id) => bus.emit({ type: 'registry.remove', id }))
 
 const tasks = new TaskManager({
-  factory: sdkRunner, store, registry, planUsage, emit: bus.emit, defaultCwd: PA_DIR, homeDir: HOME, taskPrompt: TASK_PROMPT,
+  factory: sdkRunner, store, registry, planUsage, system, emit: bus.emit, defaultCwd: PA_DIR, homeDir: HOME, taskPrompt: TASK_PROMPT,
 })
 tasks.markInterruptedOnStartup()
 
-const kitt = new KittSession({ factory: sdkRunner, store, registry, planUsage, cwd: PA_DIR, persona: KITT_PERSONA, emit: bus.emit })
+const kitt = new KittSession({ factory: sdkRunner, store, registry, planUsage, system, cwd: PA_DIR, persona: KITT_PERSONA, emit: bus.emit })
 kitt.start()
 
 const spokes = new Spokes({ registry, store, emit: bus.emit })
 setInterval(() => spokes.sweep(), 15_000)
 
-const hub = createHub({ bus, store, registry, kitt, tasks, spokes, port: PORT, hostname: HOST, staticDir: STATIC_DIR })
+const hub = createHub({ bus, store, registry, kitt, tasks, spokes, system, port: PORT, hostname: HOST, staticDir: STATIC_DIR })
 console.log(`kitt hub listening on http://${HOST}:${hub.port} (data: ${DATA_DIR}, kitt cwd: ${PA_DIR})`)

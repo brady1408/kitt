@@ -10,7 +10,7 @@ const usage = { context: 5, contextWindow: 1_000_000, plan: { fiveHour: { utiliz
 
 test('snapshot groups messages by target and resets live turns', () => {
   const s = apply({ ...initialState, live: { kitt: { turnId: 'x', text: 'half', tools: [] } } }, {
-    type: 'snapshot', registry: [], tasks: [], usage,
+    type: 'snapshot', registry: [], tasks: [], usage, system: { load: 0, memUsed: 0, diskUsed: 0, diskFreeGb: 0, apiMs: null, sampledAt: 0 },
     messages: [msg({ target: 'kitt', text: 'a' }), msg({ target: 'spoke:1', text: 'b' }), msg({ target: 'kitt', text: 'c' })],
   })
   expect(s.messages['kitt']?.map((m) => m.text)).toEqual(['a', 'c'])
@@ -79,4 +79,10 @@ test('task.deleted and registry.remove drop their rows', () => {
   s = apply(s, { type: 'task.deleted', id: 'a' }, { type: 'registry.remove', id: 'task-a' })
   expect(s.tasks).toEqual([])
   expect(s.registry.map((e) => e.id)).toEqual(['kitt'])
+})
+
+test('system.update replaces the system stats', () => {
+  const stats = { load: 0.25, memUsed: 0.6, diskUsed: 0.9, diskFreeGb: 20, apiMs: 1234, sampledAt: 5 }
+  const s = apply(initialState, { type: 'system.update', stats })
+  expect(s.system).toEqual(stats)
 })

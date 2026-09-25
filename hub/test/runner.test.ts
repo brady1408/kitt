@@ -52,3 +52,8 @@ test('rate limit events translate to plan usage events', () => {
       { type: 'ratelimit', window: 'seven_day', utilization: 0.36, resetsAt: 2, status: 'allowed' },
     ])
 })
+
+test('result events carry the api round-trip time', () => {
+  const [ev] = translate(asMsg({ type: 'result', subtype: 'success', is_error: false, result: 'x', total_cost_usd: 0, duration_api_ms: 987, usage: {} }))
+  expect(ev).toMatchObject({ type: 'result', apiMs: 987 })
+})

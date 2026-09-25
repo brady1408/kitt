@@ -11,6 +11,7 @@ import { TaskManager } from '../src/task-manager'
 import { Spokes } from '../src/spokes'
 import { fakeFactory } from './fake-runner'
 import { PlanUsage } from '../src/plan-usage'
+import { SystemMonitor } from '../src/system-monitor'
 
 const stops: (() => void)[] = []
 afterEach(() => { for (const s of stops.splice(0)) s() })
@@ -23,12 +24,13 @@ function boot() {
   const bus = createBus()
   const { factory, runners } = fakeFactory()
   const planUsage = new PlanUsage(store)
-  const kitt = new KittSession({ factory, store, registry, planUsage, cwd: join(home, 'pa'), persona: 'p', emit: bus.emit })
+  const system = new SystemMonitor()
+  const kitt = new KittSession({ factory, store, registry, planUsage, system, cwd: join(home, 'pa'), persona: 'p', emit: bus.emit })
   kitt.start()
-  const tasks = new TaskManager({ factory, store, registry, planUsage, emit: bus.emit, defaultCwd: join(home, 'pa'), homeDir: home, taskPrompt: 't' })
+  const tasks = new TaskManager({ factory, store, registry, planUsage, system, emit: bus.emit, defaultCwd: join(home, 'pa'), homeDir: home, taskPrompt: 't' })
   const spokes = new Spokes({ registry, store, emit: bus.emit })
   registry.onChange((entry) => bus.emit({ type: 'registry.update', entry }))
-  const hub = createHub({ bus, store, registry, kitt, tasks, spokes, port: 0, hostname: '127.0.0.1' })
+  const hub = createHub({ bus, store, registry, kitt, tasks, spokes, system, port: 0, hostname: '127.0.0.1' })
   stops.push(hub.stop)
   return { hub, runners, registry }
 }

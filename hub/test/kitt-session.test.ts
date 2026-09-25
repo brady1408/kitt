@@ -4,6 +4,7 @@ import { Store } from '../src/store'
 import { Registry } from '../src/registry'
 import { fakeFactory } from './fake-runner'
 import { PlanUsage } from '../src/plan-usage'
+import { SystemMonitor } from '../src/system-monitor'
 import type { ServerFrame } from '../src/protocol'
 
 const tick = () => new Promise((r) => setTimeout(r, 0))
@@ -15,9 +16,10 @@ function setup(seedSessionId?: string) {
   const registry = new Registry()
   const frames: ServerFrame[] = []
   const { factory, runners, calls } = fakeFactory()
-  const kitt = new KittSession({ factory, store, registry, planUsage: new PlanUsage(store), cwd: '/tmp/pa', persona: 'be kitt', emit: (f) => frames.push(f) })
+  const system = new SystemMonitor()
+  const kitt = new KittSession({ factory, store, registry, planUsage: new PlanUsage(store), system, cwd: '/tmp/pa', persona: 'be kitt', emit: (f) => frames.push(f) })
   kitt.start()
-  return { store, registry, frames, runners, calls, kitt }
+  return { store, registry, frames, runners, calls, kitt, system }
 }
 
 test('start registers KITT and launches a runner with the persona', () => {
@@ -141,12 +143,12 @@ test('context metric survives a hub restart and resets on clear', async () => {
   expect(first.kitt.usage()).toMatchObject({ context: 1000, contextWindow: 200_000 })
   // a new hub process over the same store
   const registry = new Registry(); const { factory } = fakeFactory()
-  const second = new KittSession({ factory, store: first.store, registry, planUsage: new PlanUsage(first.store), cwd: '/tmp/pa', persona: 'p', emit: () => {} })
+  const second = new KittSession({ factory, store: first.store, registry, planUsage: new PlanUsage(first.store), system: new SystemMonitor(), cwd: '/tmp/pa', persona: 'p', emit: () => {} })
   second.start()
   expect(second.usage()).toMatchObject({ context: 1000, contextWindow: 200_000 })
   second.clear()
   expect(second.usage().context).toBe(0)
-  const third = new KittSession({ factory, store: first.store, registry, planUsage: new PlanUsage(first.store), cwd: '/tmp/pa', persona: 'p', emit: () => {} })
+  const third = new KittSession({ factory, store: first.store, registry, planUsage: new PlanUsage(first.store), system: new SystemMonitor(), cwd: '/tmp/pa', persona: 'p', emit: () => {} })
   third.start()
   expect(third.usage().context).toBe(0)
 })
@@ -156,4 +158,11 @@ test('rate limit events from the runner update plan usage and broadcast it', asy
   s.runners[0]!.emit({ type: 'ratelimit', window: 'seven_day', utilization: 0.4, resetsAt: 500, status: 'allowed' }); await tick()
   expect(s.kitt.usage().plan.sevenDay).toEqual({ utilization: 0.4, resetsAt: 500, status: 'allowed' })
   expect(s.frames.at(-1)).toMatchObject({ type: 'usage.update', usage: { plan: { sevenDay: { utilization: 0.4 } } } })
+})
+
+test('turn results feed the api round-trip into the system monitor', async () => {
+  const s = setup()
+  s.kitt.send('hi')
+  s.runners[0]!.emit({ type: 'result', ok: true, text: 'r', usage, costUsd: 0, apiMs: 777 }); await tick()
+  expect(s.system.sample(0).apiMs).toBe(777)
 })

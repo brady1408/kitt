@@ -7,6 +7,7 @@ import type { Registry } from './registry'
 import type { KittSession } from './kitt-session'
 import type { TaskManager } from './task-manager'
 import type { Spokes } from './spokes'
+import type { SystemMonitor } from './system-monitor'
 
 export type HubDeps = {
   bus: Bus
@@ -15,6 +16,7 @@ export type HubDeps = {
   kitt: KittSession
   tasks: TaskManager
   spokes: Spokes
+  system: SystemMonitor
   port: number
   hostname: string
   staticDir?: string
@@ -41,6 +43,7 @@ export function createHub(deps: HubDeps): { port: number; stop(): void } {
     messages: deps.store.listAllMessages(200),
     tasks: deps.tasks.list(),
     usage: deps.kitt.usage(),
+    system: deps.system.sample(),
   })
 
   const handleClient = (ws: Socket, raw: string | Buffer): void => {

@@ -7,6 +7,7 @@ import { Store } from '../src/store'
 import { Registry } from '../src/registry'
 import { fakeFactory } from './fake-runner'
 import { PlanUsage } from '../src/plan-usage'
+import { SystemMonitor } from '../src/system-monitor'
 import type { ServerFrame } from '../src/protocol'
 
 const tick = () => new Promise((r) => setTimeout(r, 0))
@@ -20,7 +21,7 @@ function setup(maxRunning = 3) {
   const frames: ServerFrame[] = []
   const { factory, runners, calls } = fakeFactory()
   const planUsage = new PlanUsage(store)
-  const tasks = new TaskManager({ factory, store, registry, planUsage, emit: (f) => frames.push(f), defaultCwd: join(home, 'pa'), homeDir: home, taskPrompt: 'do task', maxRunning })
+  const tasks = new TaskManager({ factory, store, registry, planUsage, system: new SystemMonitor(), emit: (f) => frames.push(f), defaultCwd: join(home, 'pa'), homeDir: home, taskPrompt: 'do task', maxRunning })
   return { home, store, registry, planUsage, frames, runners, calls, tasks }
 }
 

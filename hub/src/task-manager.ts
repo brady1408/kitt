@@ -4,6 +4,7 @@ import { resolve, sep } from 'node:path'
 import type { AgentRunner, RunnerFactory } from './runner'
 import type { Store } from './store'
 import type { PlanUsage } from './plan-usage'
+import type { SystemMonitor } from './system-monitor'
 import type { Registry } from './registry'
 import type { ServerFrame, Task } from './protocol'
 
@@ -12,6 +13,7 @@ export type TaskDeps = {
   store: Store
   registry: Registry
   planUsage: PlanUsage
+  system: SystemMonitor
   emit: (f: ServerFrame) => void
   defaultCwd: string
   homeDir: string
@@ -118,6 +120,7 @@ export class TaskManager {
           current = { ...current, output: `${current.output}\n\n_→ ${ev.summary}_\n\n` }
           this.save(current)
         } else if (ev.type === 'result') {
+          if (ev.apiMs !== undefined) this.deps.system.noteApi(ev.apiMs)
           const usageIn = ev.usage.input + ev.usage.cacheRead + ev.usage.cacheCreate
           current = {
             ...current, status: ev.ok ? 'done' : 'error', output: current.output.trim() || ev.text,

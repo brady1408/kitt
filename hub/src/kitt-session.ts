@@ -3,6 +3,7 @@ import type { AgentRunner, RunnerFactory } from './runner'
 import { contextWindowFor } from './runner'
 import type { Store } from './store'
 import type { PlanUsage } from './plan-usage'
+import type { SystemMonitor } from './system-monitor'
 import type { Registry } from './registry'
 import type { ChatMessage, ServerFrame, TurnUsage, Usage } from './protocol'
 import { KITT_TARGET } from './protocol'
@@ -16,6 +17,7 @@ export type KittDeps = {
   store: Store
   registry: Registry
   planUsage: PlanUsage
+  system: SystemMonitor
   cwd: string
   persona: string
   emit: (f: ServerFrame) => void
@@ -149,6 +151,7 @@ export class KittSession {
           }
           break
         case 'result':
+          if (ev.apiMs !== undefined) this.deps.system.noteApi(ev.apiMs)
           this.finishTurn(ev.text, ev.usage, ev.ok)
           break
         case 'ratelimit':

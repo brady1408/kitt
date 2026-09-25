@@ -1,4 +1,4 @@
-import type { ChatMessage, ServerFrame, SessionEntry, Task, Usage } from '@kitt/hub/protocol'
+import type { ChatMessage, ServerFrame, SessionEntry, SystemStats, Task, Usage } from '@kitt/hub/protocol'
 
 export type LiveTurn = { turnId: string; text: string; tools: string[] }
 
@@ -9,6 +9,7 @@ export type HubState = {
   live: Record<string, LiveTurn | null>
   tasks: Task[]
   usage: Usage
+  system: SystemStats | null
   lastError: string | null
 }
 
@@ -19,7 +20,7 @@ export type HubAction =
 
 export const initialState: HubState = {
   connected: false, registry: [], messages: {}, live: {}, tasks: [],
-  usage: { context: 0, contextWindow: 1_000_000, plan: { fiveHour: null, sevenDay: null } }, lastError: null,
+  usage: { context: 0, contextWindow: 1_000_000, plan: { fiveHour: null, sevenDay: null } }, system: null, lastError: null,
 }
 
 const KIND_ORDER: Record<SessionEntry['kind'], number> = { kitt: 0, task: 1, spoke: 2 }
@@ -37,7 +38,7 @@ export function reduce(state: HubState, action: HubAction): HubState {
     case 'snapshot': {
       const messages: Record<string, ChatMessage[]> = {}
       for (const m of f.messages) (messages[m.target] ??= []).push(m)
-      return { ...state, registry: sortRegistry(f.registry), messages, live: {}, tasks: f.tasks, usage: f.usage }
+      return { ...state, registry: sortRegistry(f.registry), messages, live: {}, tasks: f.tasks, usage: f.usage, system: f.system }
     }
     case 'registry.update': {
       const rest = state.registry.filter((e) => e.id !== f.entry.id)
@@ -81,6 +82,8 @@ export function reduce(state: HubState, action: HubAction): HubState {
       return { ...state, tasks: state.tasks.filter((t) => t.id !== f.id) }
     case 'usage.update':
       return { ...state, usage: f.usage }
+    case 'system.update':
+      return { ...state, system: f.stats }
     case 'error':
       return { ...state, lastError: f.text }
   }

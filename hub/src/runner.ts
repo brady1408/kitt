@@ -6,7 +6,7 @@ export type RunnerEvent =
   | { type: 'init'; sessionId: string; model: string }
   | { type: 'delta'; text: string }
   | { type: 'tool'; name: string; summary: string }
-  | { type: 'result'; ok: boolean; text: string; usage: TurnUsage; costUsd: number }
+  | { type: 'result'; ok: boolean; text: string; usage: TurnUsage; costUsd: number; apiMs?: number }
   | { type: 'ratelimit'; window: 'five_hour' | 'seven_day'; utilization: number; resetsAt: number; status: PlanWindow['status'] }
   | { type: 'exit'; error?: string }
 
@@ -74,6 +74,7 @@ export function translate(m: SDKMessage): RunnerEvent[] {
         cacheCreate: u.cache_creation_input_tokens ?? 0,
       },
       costUsd: (m as { total_cost_usd?: number }).total_cost_usd ?? 0,
+      ...(typeof m.duration_api_ms === 'number' ? { apiMs: m.duration_api_ms } : {}),
     }]
   }
   return []

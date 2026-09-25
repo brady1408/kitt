@@ -87,12 +87,7 @@ export function Console() {
 
       <div className="mx-auto grid w-full max-w-[1600px] gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[250px_minmax(440px,1fr)_330px]">
         <aside className="space-y-4 xl:min-h-0 xl:overflow-y-auto">
-          <section className="border border-border bg-card/75 p-3 panel-cut">
-            <PanelTitle icon={Activity} status="Nominal">System status</PanelTitle>
-            <Metric label="Neural load" value="64%" width="64%" />
-            <Metric label="Memory buffer" value="38%" width="38%" />
-            <Metric label="Secure comms" value="99%" width="99%" />
-          </section>
+          <SystemPanel connected={state.connected} planStatus={state.usage.plan.fiveHour?.status ?? state.usage.plan.sevenDay?.status ?? 'allowed'} />
           <UsagePanel />
           <section className="border border-border bg-card/75 p-3 panel-cut">
             <PanelTitle icon={Bot} status={`${activeCount} active`}>Agent network</PanelTitle>
@@ -165,6 +160,25 @@ export function Console() {
         <span>{state.connected ? 'All systems operational' : 'Reconnecting…'}</span><span className="hidden sm:inline">Encrypted channel / Agent mesh connected</span><span className="text-primary">KITT-OS 4.18</span>
       </footer>
     </div>
+  )
+}
+
+function SystemPanel({ connected, planStatus }: { connected: boolean; planStatus: PlanWindow['status'] }) {
+  const { state } = useHub()
+  const s = state.system
+  const pct = (n: number) => `${Math.round(n * 100)}%`
+  const degraded = !connected || planStatus === 'rejected' || (s !== null && (s.load > 0.8 || s.memUsed > 0.9 || s.diskUsed > 0.9))
+  const warning = planStatus === 'allowed_warning' || (s !== null && (s.load > 0.6 || s.memUsed > 0.8 || s.diskUsed > 0.8))
+  const badge = !connected ? 'Link lost' : degraded ? 'Degraded' : warning ? 'Warning' : 'Nominal'
+  const apiPct = s?.apiMs == null ? 0 : Math.min(1, s.apiMs / 30_000)
+  return (
+    <section className="border border-border bg-card/75 p-3 panel-cut">
+      <PanelTitle icon={Activity} status={badge}>System status</PanelTitle>
+      <Metric label="Neural load" value={s ? pct(s.load) : '—'} width={s ? pct(s.load) : '0%'} />
+      <Metric label="Memory buffer" value={s ? pct(s.memUsed) : '—'} width={s ? pct(s.memUsed) : '0%'} />
+      <Metric label="Drive space" value={s ? `${pct(s.diskUsed)} · ${s.diskFreeGb} GB free` : '—'} width={s ? pct(s.diskUsed) : '0%'} />
+      <Metric label="Secure comms" value={s?.apiMs == null ? (connected ? 'Standing by' : 'Offline') : `${(s.apiMs / 1000).toFixed(1)}s`} width={`${Math.round(apiPct * 100)}%`} />
+    </section>
   )
 }
 
