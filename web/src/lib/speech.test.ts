@@ -44,14 +44,14 @@ test('cancel stops playback and drops what was queued', async () => {
   expect(s.log.at(-1)).toBe('play:three')
 })
 
-test('long text is split into sentence-sized pieces, each synthesized and played in order', async () => {
+test('long text is split into short pieces at paragraph breaks and sentence ends, played in order', async () => {
   const s = setup()
   s.speaker.speak('First sentence. Second sentence!\n\nThird, after a break? Fourth.')
   await tick()
-  expect(s.log[0]).toBe('fetch:am_michael:First sentence.')
-  expect(s.log).toContain('play:First sentence.')
-  s.finish(); await tick(); s.finish(); await tick(); s.finish(); await tick(); s.finish(); await tick()
-  expect(s.log.filter((l) => l.startsWith('play:'))).toEqual(['play:First sentence.', 'play:Second sentence!', 'play:Third, after a break?', 'play:Fourth.'])
+  expect(s.log[0]).toBe('fetch:am_michael:First sentence. Second sentence!')
+  expect(s.log).toContain('play:First sentence. Second sentence!')
+  s.finish(); await tick(); s.finish(); await tick()
+  expect(s.log.filter((l) => l.startsWith('play:'))).toEqual(['play:First sentence. Second sentence!', 'play:Third, after a break? Fourth.'])
 })
 
 test('the next piece is fetched while the current one plays', async () => {
