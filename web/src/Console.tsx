@@ -34,7 +34,8 @@ export function Console() {
   const live = state.live[target] ?? null
   const busy = live !== null
   const targetEntry = state.registry.find((e) => e.id === target)
-  const targetOffline = mode === 'pursuit' && (!terminal || targetEntry?.status === 'offline')
+  const terminalEntry = terminal ? state.registry.find((e) => e.id === terminal) : undefined
+  const targetOffline = mode === 'pursuit' && (!terminalEntry || terminalEntry.status === 'offline')
   const selectSession = (entry: SessionEntry) => {
     if (entry.kind === 'spoke') { setTerminal(entry.id); setMode('pursuit') }
     else if (entry.kind === 'kitt') setMode('kitt')
@@ -79,8 +80,8 @@ export function Console() {
     if (id === 'mic') void toggleMic()
   }
   const placeholder = mode === 'task' ? `Assign a background operation… (${taskCwd.trim() || '~/pa'})`
-    : targetOffline ? (terminal ? 'Session offline' : 'Select a terminal on the radar or in Agent network')
-    : mode === 'pursuit' ? `Transmit to ${targetEntry?.name ?? 'terminal'}…` : 'Awaiting command…'
+    : targetOffline ? (terminalEntry ? 'Session offline' : 'Select a terminal on the radar or in Agent network')
+    : mode === 'pursuit' ? `Transmit to ${terminalEntry?.name ?? 'terminal'}…` : 'Awaiting command…'
 
   const toggleMic = async () => {
     resumeAudio()
@@ -137,7 +138,7 @@ export function Console() {
         <main className="flex min-h-[720px] flex-col overflow-hidden border border-border bg-card/75 panel-cut xl:min-h-0">
           {mode === 'pursuit' && (
             <div className="flex items-center justify-between border-b border-border bg-primary/10 px-4 py-2 font-mono text-[10px] uppercase">
-              <span>Pursuit → {targetEntry?.name ?? 'no terminal selected'} <span className="text-muted-foreground">{targetEntry?.cwd}</span>{terminal && targetOffline && <span className="ml-2 text-destructive">offline</span>}</span>
+              <span>Pursuit → {terminalEntry?.name ?? 'no terminal selected'} <span className="text-muted-foreground">{terminalEntry?.cwd}</span>{terminalEntry && targetOffline && <span className="ml-2 text-destructive">offline</span>}</span>
               <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setMode('kitt')}><X />Normal cruise</Button>
             </div>
           )}
