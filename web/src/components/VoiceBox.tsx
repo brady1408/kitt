@@ -27,7 +27,6 @@ export function VoiceBox({ getLevel }: { getLevel: () => number }) {
 
   return (
     <div className="voice-chamber relative flex min-h-56 items-center justify-center overflow-hidden border border-border bg-card/70 p-6">
-      <div className="scanner-orbit" aria-hidden="true" />
       <div className="relative z-10 flex items-center justify-center gap-5">
         {[0, 1, 2].map((column) => (
           <div key={column} className={`flex flex-col gap-1.5 ${column === 1 ? "w-12" : "w-8"}`}>
