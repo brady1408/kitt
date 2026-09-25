@@ -74,7 +74,7 @@ export function Console() {
   return (
     <div className="console-grid relative min-h-screen overflow-hidden bg-background p-3 text-foreground md:p-5 xl:flex xl:h-screen xl:flex-col">
       <div className="scanlines pointer-events-none fixed inset-0 z-50 opacity-15" />
-      <header className="mx-auto mb-4 flex max-w-[1600px] items-center justify-between border-b border-border bg-card/60 px-4 py-3 panel-cut">
+      <header className="mx-auto mb-4 flex w-full max-w-[1600px] items-center justify-between border-b border-border bg-card/60 px-4 py-3 panel-cut">
         <div className="flex min-w-0 items-center gap-3">
           <div className={`h-2 w-2 ${state.connected ? 'animate-pulse bg-primary shadow-signal' : 'bg-destructive'}`} />
           <div><h1 className="font-display text-3xl leading-none text-primary">K.I.T.T.</h1><p className="truncate text-[9px] uppercase text-muted-foreground">Knight Industries Two Thousand</p></div>
@@ -83,7 +83,7 @@ export function Console() {
         <div className="text-right font-mono text-[9px] uppercase text-muted-foreground"><p className="text-accent">{state.connected ? 'Neural link active' : 'Neural link lost'}</p><p>Console / 04.18</p></div>
       </header>
 
-      <div className="relative mx-auto mb-4 max-w-[1600px]"><FrontScanner /></div>
+      <div className="relative mx-auto mb-4 w-full max-w-[1600px]"><FrontScanner /></div>
 
       <div className="mx-auto grid w-full max-w-[1600px] gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[250px_minmax(440px,1fr)_330px]">
         <aside className="space-y-4 xl:min-h-0 xl:overflow-y-auto">
