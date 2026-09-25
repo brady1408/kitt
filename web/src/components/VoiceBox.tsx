@@ -30,22 +30,25 @@ export function VoiceBox({ getLevel }: { getLevel: () => number }) {
       <div className="relative z-10 flex items-center justify-center gap-5">
         {[0, 1, 2].map((column) => (
           <div key={column} className={`flex flex-col gap-1.5 ${column === 1 ? "w-12" : "w-8"}`}>
-            {Array.from({ length: SEGMENTS }).map((_, index) => (
+            {Array.from({ length: SEGMENTS }).map((_, index) => {
+              const cap = Math.abs(index - (SEGMENTS - 1) / 2) >= SEGMENTS / 2 - 2;
+              return (
               <div
                 key={index}
                 ref={(element) => {
                   const segments = cols.current[column];
                   if (segments) segments[index] = element;
                 }}
-                className="h-2 bg-primary shadow-signal transition-opacity duration-75"
+                className={`h-2 transition-opacity duration-75 ${cap ? "bg-amber shadow-amber" : "bg-primary shadow-signal"}`}
                 style={{ opacity: 0.12 }}
               />
-            ))}
+              );
+            })}
           </div>
         ))}
       </div>
       <div className="absolute inset-x-5 bottom-4 flex items-center justify-between font-mono text-[9px] uppercase text-muted-foreground">
-        <span>Voice matrix</span><span className="text-primary">Live</span>
+        <span>Voice matrix</span><span className="text-green">Live</span>
       </div>
     </div>
   );

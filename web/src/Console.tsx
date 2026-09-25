@@ -90,7 +90,7 @@ export function Console() {
           <div><h1 className="font-display text-3xl leading-none text-primary">K.I.T.T.</h1><p className="truncate text-[9px] uppercase text-muted-foreground">Knight Industries Two Thousand</p></div>
         </div>
         <div className="hidden w-52 sm:block"><Scanner active={busy} /></div>
-        <div className="text-right font-mono text-[9px] uppercase text-muted-foreground"><p className="text-accent">{state.connected ? 'Neural link active' : 'Neural link lost'}</p><p>Console / 04.18</p></div>
+        <div className="text-right font-mono text-[9px] uppercase text-muted-foreground"><p className={state.connected ? 'text-green' : 'text-primary'}>{state.connected ? 'Neural link active' : 'Neural link lost'}</p><p>Console / 04.18</p></div>
       </header>
 
       <div className="relative mx-auto mb-4 w-full max-w-[1600px]"><FrontScanner /></div>
@@ -125,7 +125,7 @@ export function Console() {
                 <div className="prose prose-invert max-w-none text-sm text-foreground">
                   <span className="mb-1 block font-display text-sm text-primary">K.I.T.T. / RESPONSE</span>
                   {live.tools.map((t, i) => <ToolLine key={i} summary={t} />)}
-                  {live.text ? <Markdown>{live.text}</Markdown> : <p className="animate-pulse font-mono text-xs uppercase text-accent">Processing command…</p>}
+                  {live.text ? <Markdown>{live.text}</Markdown> : <p className="animate-pulse font-mono text-xs uppercase text-amber">Processing command…</p>}
                 </div>
               </div>
             )}
@@ -177,10 +177,10 @@ function SystemPanel({ connected, planStatus }: { connected: boolean; planStatus
   return (
     <section className="border border-border bg-card/75 p-3 panel-cut">
       <PanelTitle icon={Activity} status={badge}>System status</PanelTitle>
-      <Metric label="Neural load" value={s ? pct(s.load) : '—'} width={s ? pct(s.load) : '0%'} />
-      <Metric label="Memory buffer" value={s ? pct(s.memUsed) : '—'} width={s ? pct(s.memUsed) : '0%'} />
-      <Metric label="Drive space" value={s ? `${pct(s.diskUsed)} · ${s.diskFreeGb} GB free` : '—'} width={s ? pct(s.diskUsed) : '0%'} />
-      <Metric label="Secure comms" value={s?.apiMs == null ? (connected ? 'Standing by' : 'Offline') : `${(s.apiMs / 1000).toFixed(1)}s`} width={`${Math.round(apiPct * 100)}%`} />
+      <Metric label="Neural load" value={s ? pct(s.load) : '—'} width={s ? pct(s.load) : '0%'} tone={s && s.load > 0.8 ? 'red' : 'amber'} />
+      <Metric label="Memory buffer" value={s ? pct(s.memUsed) : '—'} width={s ? pct(s.memUsed) : '0%'} tone={s && s.memUsed > 0.9 ? 'red' : 'amber'} />
+      <Metric label="Drive space" value={s ? `${pct(s.diskUsed)} · ${s.diskFreeGb} GB free` : '—'} width={s ? pct(s.diskUsed) : '0%'} tone={s && s.diskUsed > 0.9 ? 'red' : 'amber'} />
+      <Metric label="Secure comms" value={s?.apiMs == null ? (connected ? 'Standing by' : 'Offline') : `${(s.apiMs / 1000).toFixed(1)}s`} width={`${Math.round(apiPct * 100)}%`} tone={connected ? 'amber' : 'red'} />
     </section>
   )
 }
@@ -217,13 +217,16 @@ function PanelTitle({ icon: Icon, children, status }: { icon: typeof Activity; c
   return (
     <div className="mb-3 flex items-center justify-between border-b border-border pb-2">
       <h2 className="flex items-center gap-2 font-display text-base uppercase text-primary"><Icon className="h-3.5 w-3.5" />{children}</h2>
-      {status && <span className="font-mono text-[9px] uppercase text-accent">{status}</span>}
+      {status && <span className="font-mono text-[9px] uppercase text-green">{status}</span>}
     </div>
   )
 }
 
-function Metric({ label, value, width }: { label: string; value: string; width: string }) {
-  return <div className="mb-3"><div className="mb-1 flex justify-between text-[10px] uppercase text-muted-foreground"><span>{label}</span><span className="text-foreground">{value}</span></div><div className="h-1 bg-secondary"><div className="h-full bg-primary shadow-signal" style={{ width }} /></div></div>
+type Tone = 'amber' | 'red'
+const BAR: Record<Tone, string> = { amber: 'bg-amber shadow-amber', red: 'bg-primary shadow-signal' }
+
+function Metric({ label, value, width, tone = 'amber' }: { label: string; value: string; width: string; tone?: Tone }) {
+  return <div className="mb-3"><div className="mb-1 flex justify-between text-[10px] uppercase text-muted-foreground"><span>{label}</span><span className="font-mono text-green">{value}</span></div><div className="h-1 bg-secondary"><div className={`h-full ${BAR[tone]}`} style={{ width }} /></div></div>
 }
 
 function ToolLine({ summary }: { summary: string }) {
@@ -231,8 +234,8 @@ function ToolLine({ summary }: { summary: string }) {
 }
 
 function MessageRow({ message }: { message: ChatMessage }) {
-  if (message.role === 'system') return <p className="text-center font-mono text-[10px] uppercase text-accent">{message.text}</p>
-  if (message.role === 'user') return <div className="flex justify-end"><div className="max-w-[82%] border border-primary/30 bg-primary/10 px-4 py-3 text-sm">{message.text}</div></div>
+  if (message.role === 'system') return <p className="text-center font-mono text-[10px] uppercase text-green">{message.text}</p>
+  if (message.role === 'user') return <div className="flex justify-end"><div className="max-w-[82%] border border-border bg-secondary/70 px-4 py-3 text-sm">{message.text}</div></div>
   if (message.toolSummary !== null) return <div className="flex gap-3"><span className="mt-1 h-2 w-2 shrink-0" /><ToolLine summary={message.toolSummary} /></div>
   return (
     <div className="flex gap-3">
@@ -246,7 +249,10 @@ function MessageRow({ message }: { message: ChatMessage }) {
 }
 
 const STATUS_DOT: Record<SessionEntry['status'], string> = {
-  working: 'animate-pulse bg-primary shadow-signal', idle: 'bg-accent', offline: 'bg-muted-foreground/40', error: 'bg-destructive',
+  working: 'animate-pulse bg-primary shadow-signal', idle: 'bg-green shadow-green', offline: 'bg-muted-foreground/40', error: 'bg-destructive',
+}
+const STATUS_TEXT: Record<SessionEntry['status'], string> = {
+  working: 'text-primary', idle: 'text-green', offline: 'text-muted-foreground', error: 'text-destructive',
 }
 const KIND_LABEL: Record<SessionEntry['kind'], string> = { kitt: 'core', task: 'task', spoke: 'terminal' }
 
@@ -256,7 +262,7 @@ function AgentRow({ entry, selected, onSelect }: { entry: SessionEntry; selected
     <button type="button" onClick={onSelect} disabled={entry.kind === 'task'} className={`mb-2 flex w-full items-center gap-2 border p-2 text-left ${selected ? 'border-primary bg-primary/10' : 'border-border bg-background/45'} disabled:cursor-default`}>
       <span className={`h-2 w-2 shrink-0 ${STATUS_DOT[entry.status]}`} />
       <div className="min-w-0 flex-1"><p className="truncate text-xs font-medium uppercase">{entry.name}</p><p className="truncate text-[10px] text-muted-foreground">{KIND_LABEL[entry.kind]} · {dir}</p></div>
-      <span className="text-[9px] uppercase text-primary">{entry.status}</span>
+      <span className={`text-[9px] uppercase ${STATUS_TEXT[entry.status]}`}>{entry.status}</span>
     </button>
   )
 }
@@ -274,8 +280,8 @@ function PlanMeter({ label, window, now }: { label: string; window: PlanWindow |
   const pct = Math.min(100, window.utilization * 100)
   return (
     <div className="mb-3">
-      <div className="mb-1 flex justify-between text-[10px] uppercase text-muted-foreground"><span>{label}</span><span className="text-foreground">{pct.toFixed(0)}% · resets {resetsIn(window.resetsAt, now)}</span></div>
-      <div className="h-1 bg-secondary"><div className={`h-full shadow-signal ${window.status === 'rejected' ? 'bg-destructive' : window.status === 'allowed_warning' ? 'bg-accent' : 'bg-primary'}`} style={{ width: `${pct}%` }} /></div>
+      <div className="mb-1 flex justify-between text-[10px] uppercase text-muted-foreground"><span>{label}</span><span className="font-mono text-green">{pct.toFixed(0)}% · resets {resetsIn(window.resetsAt, now)}</span></div>
+      <div className="h-1 bg-secondary"><div className={`h-full ${window.status === 'allowed' ? BAR.amber : BAR.red}`} style={{ width: `${pct}%` }} /></div>
     </div>
   )
 }
@@ -298,7 +304,7 @@ function UsagePanel() {
 }
 
 const TASK_DOT: Record<Task['status'], string> = {
-  queued: 'bg-muted-foreground/60', running: 'animate-pulse bg-accent', done: 'bg-primary', error: 'bg-destructive', cancelled: 'bg-muted-foreground/40', interrupted: 'bg-destructive/60',
+  queued: 'bg-muted-foreground/60', running: 'animate-pulse bg-amber shadow-amber', done: 'bg-green shadow-green', error: 'bg-destructive', cancelled: 'bg-muted-foreground/40', interrupted: 'bg-destructive/60',
 }
 
 function TaskPanel() {

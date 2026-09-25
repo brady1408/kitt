@@ -43,6 +43,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-amber: var(--amber);
+  --color-green: var(--green);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -82,8 +84,8 @@
   --accent-foreground: oklch(0.15 0.01 30);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.3 0.035 22);
-  --input: oklch(0.3 0.035 22);
+  --border: oklch(0.29 0.018 35);
+  --input: oklch(0.29 0.018 35);
   --ring: oklch(0.6 0.24 27);
   --glow: 0 0 12px oklch(0.6 0.24 27 / 0.8), 0 0 28px oklch(0.6 0.24 27 / 0.4);
   --chart-1: oklch(0.646 0.222 41.116);
@@ -101,6 +103,10 @@
   --sidebar-ring: oklch(0.704 0.04 256.788);
   --signal-soft: oklch(0.32 0.1 25);
   --warning: oklch(0.8 0.16 75);
+  --amber: oklch(0.8 0.16 75);
+  --green: oklch(0.8 0.18 145);
+  --glow-amber: 0 0 8px oklch(0.8 0.16 75 / 0.7), 0 0 20px oklch(0.8 0.16 75 / 0.3);
+  --glow-green: 0 0 8px oklch(0.8 0.18 145 / 0.6), 0 0 18px oklch(0.8 0.18 145 / 0.25);
 }
 
 .dark {
@@ -151,6 +157,8 @@
   }
 }
 
+@utility shadow-amber { box-shadow: var(--glow-amber); }
+@utility shadow-green { box-shadow: var(--glow-green); }
 @utility shadow-signal {
   box-shadow: 0 0 8px color-mix(in oklab, var(--primary) 78%, transparent), 0 0 22px color-mix(in oklab, var(--primary) 32%, transparent);
 }
