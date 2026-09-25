@@ -6,6 +6,7 @@ import { TaskManager } from '../src/task-manager'
 import { Store } from '../src/store'
 import { Registry } from '../src/registry'
 import { fakeFactory } from './fake-runner'
+import { PlanUsage } from '../src/plan-usage'
 import type { ServerFrame } from '../src/protocol'
 
 const tick = () => new Promise((r) => setTimeout(r, 0))
@@ -18,8 +19,9 @@ function setup(maxRunning = 3) {
   const registry = new Registry()
   const frames: ServerFrame[] = []
   const { factory, runners, calls } = fakeFactory()
-  const tasks = new TaskManager({ factory, store, registry, emit: (f) => frames.push(f), defaultCwd: join(home, 'pa'), homeDir: home, taskPrompt: 'do task', maxRunning })
-  return { home, store, registry, frames, runners, calls, tasks }
+  const planUsage = new PlanUsage(store)
+  const tasks = new TaskManager({ factory, store, registry, planUsage, emit: (f) => frames.push(f), defaultCwd: join(home, 'pa'), homeDir: home, taskPrompt: 'do task', maxRunning })
+  return { home, store, registry, planUsage, frames, runners, calls, tasks }
 }
 
 test('create validates cwd: default, ~ expansion, escapes rejected', () => {
@@ -117,4 +119,11 @@ test('cancel on a queued task marks it cancelled without ever starting it', () =
   expect(t.finishedAt).not.toBeNull()
   expect(s.runners).toHaveLength(1)
   expect(s.frames.at(-1)).toMatchObject({ type: 'task.update', task: { id: two.id, status: 'cancelled' } })
+})
+
+test('rate limit events from task runners update plan usage too', async () => {
+  const s = setup()
+  s.tasks.create('x')
+  s.runners[0]!.emit({ type: 'ratelimit', window: 'five_hour', utilization: 0.5, resetsAt: 900, status: 'allowed' }); await tick()
+  expect(s.planUsage.snapshot().fiveHour).toEqual({ utilization: 0.5, resetsAt: 900, status: 'allowed' })
 })

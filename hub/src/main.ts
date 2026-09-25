@@ -7,6 +7,7 @@ import { Registry } from './registry'
 import { KittSession } from './kitt-session'
 import { TaskManager } from './task-manager'
 import { Spokes } from './spokes'
+import { PlanUsage } from './plan-usage'
 import { createHub } from './server'
 import { sdkRunner } from './runner'
 import { KITT_PERSONA, TASK_PROMPT } from './persona'
@@ -23,15 +24,16 @@ mkdirSync(DATA_DIR, { recursive: true })
 const bus = createBus()
 const store = new Store(join(DATA_DIR, 'kitt.db'))
 const registry = new Registry()
+const planUsage = new PlanUsage(store)
 registry.onChange((entry) => bus.emit({ type: 'registry.update', entry }))
 registry.onRemove((id) => bus.emit({ type: 'registry.remove', id }))
 
 const tasks = new TaskManager({
-  factory: sdkRunner, store, registry, emit: bus.emit, defaultCwd: PA_DIR, homeDir: HOME, taskPrompt: TASK_PROMPT,
+  factory: sdkRunner, store, registry, planUsage, emit: bus.emit, defaultCwd: PA_DIR, homeDir: HOME, taskPrompt: TASK_PROMPT,
 })
 tasks.markInterruptedOnStartup()
 
-const kitt = new KittSession({ factory: sdkRunner, store, registry, cwd: PA_DIR, persona: KITT_PERSONA, emit: bus.emit })
+const kitt = new KittSession({ factory: sdkRunner, store, registry, planUsage, cwd: PA_DIR, persona: KITT_PERSONA, emit: bus.emit })
 kitt.start()
 
 const spokes = new Spokes({ registry, store, emit: bus.emit })

@@ -23,7 +23,7 @@ test('task.create cwd is optional', () => {
 test('server snapshot frame validates', () => {
   const r = ServerFrame.safeParse({
     type: 'snapshot', registry: [], messages: [], tasks: [],
-    usage: { context: 0, contextWindow: 1000000, h5: 0, d7: 0 },
+    usage: { context: 0, contextWindow: 1000000, plan: { fiveHour: null, sevenDay: { utilization: 0.36, resetsAt: 1790582400, status: 'allowed' } } },
   })
   expect(r.success).toBe(true)
 })

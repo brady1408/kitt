@@ -40,3 +40,15 @@ test('context window by model family', () => {
   expect(contextWindowFor('claude-haiku-4-5-20251001')).toBe(200_000)
   expect(contextWindowFor('')).toBe(1_000_000)
 })
+
+test('rate limit events translate to plan usage events', () => {
+  expect(translate(asMsg({ type: 'rate_limit_event', rate_limit_info: { status: 'allowed', rateLimitType: 'five_hour', utilization: 0.12, resetsAt: 1790000000 } })))
+    .toEqual([{ type: 'ratelimit', window: 'five_hour', utilization: 0.12, resetsAt: 1790000000, status: 'allowed' }])
+  expect(translate(asMsg({ type: 'rate_limit_event', rate_limit_info: { status: 'allowed', rateLimitType: 'overage' } }))).toEqual([])
+  expect(translate(asMsg({ type: 'rate_limit_event', rate_limit_info: { status: 'allowed', rateLimitType: 'five_hour', utilization: 0.14, resetsAt: 1,
+    unifiedWindows: { five_hour: { utilization: 0.14, resetsAt: 1 }, seven_day: { utilization: 0.36, resetsAt: 2 }, seven_day_overage_included: { utilization: 0.68, resetsAt: 2 } } } })))
+    .toEqual([
+      { type: 'ratelimit', window: 'five_hour', utilization: 0.14, resetsAt: 1, status: 'allowed' },
+      { type: 'ratelimit', window: 'seven_day', utilization: 0.36, resetsAt: 2, status: 'allowed' },
+    ])
+})

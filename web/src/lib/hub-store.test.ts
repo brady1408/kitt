@@ -6,7 +6,7 @@ const msg = (over: Partial<ChatMessage>): ChatMessage => ({
   id: crypto.randomUUID(), target: 'kitt', role: 'assistant', text: 't', toolSummary: null, createdAt: 1, ...over,
 })
 const apply = (state: HubState, ...frames: ServerFrame[]) => frames.reduce((s, frame) => reduce(s, { type: 'frame', frame }), state)
-const usage = { context: 5, contextWindow: 1_000_000, h5: 10, d7: 20 }
+const usage = { context: 5, contextWindow: 1_000_000, plan: { fiveHour: { utilization: 0.1, resetsAt: 1, status: 'allowed' as const }, sevenDay: null } }
 
 test('snapshot groups messages by target and resets live turns', () => {
   const s = apply({ ...initialState, live: { kitt: { turnId: 'x', text: 'half', tools: [] } } }, {

@@ -1,7 +1,7 @@
 import { Markdown } from '@/components/Markdown'
 import { useEffect, useRef, useState } from 'react'
 import { Activity, Bot, ChevronDown, Gauge, Mic, MicOff, Play, Radio, Send, Square, Trash2, Volume2, VolumeX, X } from 'lucide-react'
-import type { ChatMessage, SessionEntry, Task } from '@kitt/hub/protocol'
+import type { ChatMessage, PlanWindow, SessionEntry, Task } from '@kitt/hub/protocol'
 import { Button } from '@/components/ui/button'
 import { FrontScanner, VoiceBox, Scanner } from '@/components/VoiceBox'
 import { getLevel, resumeAudio, speak, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
@@ -216,19 +216,38 @@ function AgentRow({ entry, selected, onSelect }: { entry: SessionEntry; selected
   )
 }
 
+function resetsIn(epochSeconds: number, now: number): string {
+  const mins = Math.max(0, Math.round((epochSeconds * 1000 - now) / 60_000))
+  const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60
+  if (d > 0) return `${d}d ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
+
+function PlanMeter({ label, window, now }: { label: string; window: PlanWindow | null; now: number }) {
+  if (!window) return <Metric label={label} value="—" width="0%" />
+  const pct = Math.min(100, window.utilization * 100)
+  return (
+    <div className="mb-3">
+      <div className="mb-1 flex justify-between text-[10px] uppercase text-muted-foreground"><span>{label}</span><span className="text-foreground">{pct.toFixed(0)}% · resets {resetsIn(window.resetsAt, now)}</span></div>
+      <div className="h-1 bg-secondary"><div className={`h-full shadow-signal ${window.status === 'rejected' ? 'bg-destructive' : window.status === 'allowed_warning' ? 'bg-accent' : 'bg-primary'}`} style={{ width: `${pct}%` }} /></div>
+    </div>
+  )
+}
+
 function UsagePanel() {
   const { state } = useHub()
-  const { context, contextWindow, h5, d7 } = state.usage
-  const BUDGET_5H = 1_000_000, BUDGET_7D = 10_000_000
-  const pct = (n: number, d: number) => Math.min(100, (n / d) * 100)
-  const ctxPct = pct(context, contextWindow)
+  const { context, contextWindow, plan } = state.usage
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
+  const ctxPct = Math.min(100, (context / contextWindow) * 100)
   return (
     <section className="border border-border bg-card/75 p-3 panel-cut">
       <PanelTitle icon={Gauge} status={`${context.toLocaleString()} tok`}>Agent metrics</PanelTitle>
       <Metric label="Context used" value={`${ctxPct.toFixed(1)}%`} width={`${ctxPct}%`} />
       <div className="mb-3 flex justify-between text-[10px] uppercase text-muted-foreground"><span>Context window</span><span className="text-foreground">{(contextWindow / 1000).toFixed(0)}K</span></div>
-      <Metric label="5-hour usage" value={`${pct(h5, BUDGET_5H).toFixed(1)}%`} width={`${pct(h5, BUDGET_5H)}%`} />
-      <Metric label="7-day usage" value={`${pct(d7, BUDGET_7D).toFixed(1)}%`} width={`${pct(d7, BUDGET_7D)}%`} />
+      <PlanMeter label="5-hour plan usage" window={plan.fiveHour} now={now} />
+      <PlanMeter label="7-day plan usage" window={plan.sevenDay} now={now} />
     </section>
   )
 }

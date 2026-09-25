@@ -46,8 +46,15 @@ export const TurnUsage = z.object({
 })
 export type TurnUsage = z.infer<typeof TurnUsage>
 
+export const PlanWindow = z.object({
+  utilization: z.number(), resetsAt: z.number(), status: z.enum(['allowed', 'allowed_warning', 'rejected']),
+})
+export type PlanWindow = z.infer<typeof PlanWindow>
+export const PlanUsageSnapshot = z.object({ fiveHour: PlanWindow.nullable(), sevenDay: PlanWindow.nullable() })
+export type PlanUsageSnapshot = z.infer<typeof PlanUsageSnapshot>
+
 export const Usage = z.object({
-  context: z.number(), contextWindow: z.number(), h5: z.number(), d7: z.number(),
+  context: z.number(), contextWindow: z.number(), plan: PlanUsageSnapshot,
 })
 export type Usage = z.infer<typeof Usage>
 

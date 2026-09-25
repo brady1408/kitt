@@ -3,6 +3,7 @@ import { existsSync, statSync } from 'node:fs'
 import { resolve, sep } from 'node:path'
 import type { AgentRunner, RunnerFactory } from './runner'
 import type { Store } from './store'
+import type { PlanUsage } from './plan-usage'
 import type { Registry } from './registry'
 import type { ServerFrame, Task } from './protocol'
 
@@ -10,6 +11,7 @@ export type TaskDeps = {
   factory: RunnerFactory
   store: Store
   registry: Registry
+  planUsage: PlanUsage
   emit: (f: ServerFrame) => void
   defaultCwd: string
   homeDir: string
@@ -123,6 +125,8 @@ export class TaskManager {
           }
           this.deps.store.recordUsage('task', usageIn, ev.usage.output)
           this.save(current)
+        } else if (ev.type === 'ratelimit') {
+          this.deps.planUsage.update(ev)
         } else if (ev.type === 'exit') {
           current = this.finalizeIfRunning(task.id, current, ev.error)
         }

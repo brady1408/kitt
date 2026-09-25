@@ -19,7 +19,7 @@ export type HubAction =
 
 export const initialState: HubState = {
   connected: false, registry: [], messages: {}, live: {}, tasks: [],
-  usage: { context: 0, contextWindow: 1_000_000, h5: 0, d7: 0 }, lastError: null,
+  usage: { context: 0, contextWindow: 1_000_000, plan: { fiveHour: null, sevenDay: null } }, lastError: null,
 }
 
 const KIND_ORDER: Record<SessionEntry['kind'], number> = { kitt: 0, task: 1, spoke: 2 }

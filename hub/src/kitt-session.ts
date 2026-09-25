@@ -2,12 +2,11 @@ import { randomUUID } from 'node:crypto'
 import type { AgentRunner, RunnerFactory } from './runner'
 import { contextWindowFor } from './runner'
 import type { Store } from './store'
+import type { PlanUsage } from './plan-usage'
 import type { Registry } from './registry'
 import type { ChatMessage, ServerFrame, TurnUsage, Usage } from './protocol'
 import { KITT_TARGET } from './protocol'
 
-const H5 = 5 * 3600e3
-const D7 = 7 * 864e5
 export const SESSION_KEY = 'kitt_session_id'
 const CONTEXT_KEY = 'kitt_last_context'
 const MODEL_KEY = 'kitt_model'
@@ -16,6 +15,7 @@ export type KittDeps = {
   factory: RunnerFactory
   store: Store
   registry: Registry
+  planUsage: PlanUsage
   cwd: string
   persona: string
   emit: (f: ServerFrame) => void
@@ -32,7 +32,9 @@ export class KittSession {
   private model = ''
   private lastContext = 0
 
-  constructor(private deps: KittDeps) {}
+  constructor(private deps: KittDeps) {
+    deps.planUsage.onChange(() => this.deps.emit({ type: 'usage.update', usage: this.usage() }))
+  }
 
   start(): void {
     this.lastContext = Number(this.deps.store.kvGet(CONTEXT_KEY)) || 0
@@ -77,8 +79,7 @@ export class KittSession {
     return {
       context: this.lastContext,
       contextWindow: contextWindowFor(this.model),
-      h5: this.deps.store.sumUsageSince(H5),
-      d7: this.deps.store.sumUsageSince(D7),
+      plan: this.deps.planUsage.snapshot(),
     }
   }
 
@@ -149,6 +150,9 @@ export class KittSession {
           break
         case 'result':
           this.finishTurn(ev.text, ev.usage, ev.ok)
+          break
+        case 'ratelimit':
+          this.deps.planUsage.update(ev)
           break
         case 'exit':
           this.handleExit(ev.error)

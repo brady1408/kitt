@@ -1,12 +1,13 @@
 import { query, type SDKMessage, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import { InputQueue } from './input-queue'
-import type { TurnUsage } from './protocol'
+import type { PlanWindow, TurnUsage } from './protocol'
 
 export type RunnerEvent =
   | { type: 'init'; sessionId: string; model: string }
   | { type: 'delta'; text: string }
   | { type: 'tool'; name: string; summary: string }
   | { type: 'result'; ok: boolean; text: string; usage: TurnUsage; costUsd: number }
+  | { type: 'ratelimit'; window: 'five_hour' | 'seven_day'; utilization: number; resetsAt: number; status: PlanWindow['status'] }
   | { type: 'exit'; error?: string }
 
 export interface AgentRunner {
@@ -57,6 +58,7 @@ export function translate(m: SDKMessage): RunnerEvent[] {
     }
     return out
   }
+  if (m.type === 'rate_limit_event') return translateRateLimit(m.rate_limit_info)
   if (m.type === 'result') {
     const u: { input_tokens?: number | null; output_tokens?: number | null; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null } =
       'usage' in m && m.usage ? m.usage : {}
@@ -75,6 +77,34 @@ export function translate(m: SDKMessage): RunnerEvent[] {
     }]
   }
   return []
+}
+
+type RateLimitInfo = {
+  status: PlanWindow['status']
+  rateLimitType?: string
+  utilization?: number
+  resetsAt?: number
+  unifiedWindows?: Partial<Record<string, { utilization?: number; resetsAt?: number }>>
+}
+
+const WINDOWS = ['five_hour', 'seven_day'] as const
+
+function translateRateLimit(info: RateLimitInfo): RunnerEvent[] {
+  const out: RunnerEvent[] = []
+  if (info.unifiedWindows) {
+    for (const window of WINDOWS) {
+      const w = info.unifiedWindows[window]
+      if (w && typeof w.utilization === 'number' && typeof w.resetsAt === 'number') {
+        out.push({ type: 'ratelimit', window, utilization: w.utilization, resetsAt: w.resetsAt, status: info.status })
+      }
+    }
+    return out
+  }
+  const window = WINDOWS.find((w) => w === info.rateLimitType)
+  if (window && typeof info.utilization === 'number' && typeof info.resetsAt === 'number') {
+    out.push({ type: 'ratelimit', window, utilization: info.utilization, resetsAt: info.resetsAt, status: info.status })
+  }
+  return out
 }
 
 export const sdkRunner: RunnerFactory = (opts) => {
