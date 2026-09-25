@@ -27,9 +27,9 @@ export function VoiceBox({ getLevel, frameless = false }: { getLevel: () => numb
 
   return (
     <div className={frameless ? "relative flex items-center justify-center py-2" : "voice-chamber relative flex min-h-56 items-center justify-center overflow-hidden border border-border bg-card/70 p-6"}>
-      <div className="relative z-10 flex items-center justify-center gap-5">
+      <div className={`relative z-10 flex items-center justify-center ${frameless ? "gap-3" : "gap-5"}`}>
         {[0, 1, 2].map((column) => (
-          <div key={column} className={`flex flex-col gap-1.5 ${column === 1 ? "w-12" : "w-8"}`}>
+          <div key={column} className={`flex flex-col gap-1.5 ${column === 1 ? (frameless ? "w-9" : "w-12") : (frameless ? "w-6" : "w-8")}`}>
             {Array.from({ length: SEGMENTS }).map((_, index) => {
               const cap = Math.abs(index - (SEGMENTS - 1) / 2) >= SEGMENTS / 2 - 2;
               return (

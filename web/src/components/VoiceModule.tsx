@@ -20,7 +20,7 @@ function LampPlate({ lamp, onClick }: { lamp: Lamp; onClick?: () => void }) {
       disabled={!control}
       aria-pressed={control ? lamp.lit : undefined}
       title={control ? `Toggle ${lamp.label}` : `${lamp.label}${lamp.lit ? ' active' : ''}`}
-      className={`flex h-7 w-16 items-center justify-center gap-1 rounded-[3px] text-[9px] font-bold uppercase leading-none tracking-wide transition-colors ${style} ${control ? 'cursor-pointer' : 'cursor-default'}`}
+      className={`flex h-7 w-14 items-center justify-center gap-1 rounded-[3px] text-[9px] font-bold uppercase leading-none tracking-wide transition-colors ${style} ${control ? 'cursor-pointer' : 'cursor-default'}`}
     >
       <span>{lamp.label}</span>
       {lamp.detail && <span className="font-mono text-[8px] opacity-80">{lamp.detail}</span>}
@@ -44,9 +44,9 @@ export function VoiceModule({ lamps, onLamp, mode, onMode, getLevel }: {
   const column = (side: Lamp['side']) => lamps.filter((l) => l.side === side)
   return (
     <div className="border border-border bg-background/60 p-3">
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
         <div className="flex flex-col gap-1.5">{column('left').map((l) => <LampPlate key={l.id} lamp={l} onClick={() => onLamp(l.id)} />)}</div>
-        <VoiceBox getLevel={getLevel} frameless />
+        <div className="min-w-0"><VoiceBox getLevel={getLevel} frameless /></div>
         <div className="flex flex-col gap-1.5">{column('right').map((l) => <LampPlate key={l.id} lamp={l} onClick={() => onLamp(l.id)} />)}</div>
       </div>
       <div className="mt-3 grid grid-cols-[auto_1fr] items-stretch gap-3">
