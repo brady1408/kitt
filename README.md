@@ -151,6 +151,10 @@ bun run typecheck    # all three packages
 
 The console design was started in [Lovable](https://lovable.dev) and ported by hand; the design sandbox lives in a separate repository. The hub-to-browser protocol is defined once in `hub/src/protocol.ts` and imported by the web package.
 
+## Support
+
+KITT talks a lot, and every word of it goes through a Claude subscription. If it made you smile, you can [buy the next tank of tokens on Ko-fi](https://ko-fi.com/bradycole). Issues and pull requests are just as welcome.
+
 ## Status
 
-v1. Working and in daily use on one Linux machine; other platforms are untested. Known rough edges: the `API` lamp trips on long tool-heavy turns. Issues and pull requests are welcome.
+v1. Working and in daily use on one Linux machine; other platforms are untested. Known rough edges: the `API` lamp trips on long tool-heavy turns.
