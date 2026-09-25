@@ -162,6 +162,9 @@
 @keyframes kitt-sweep { 0% { transform: translateX(-120%); } 50% { transform: translateX(450%); } 100% { transform: translateX(-120%); } }
 @keyframes data-drift { from { transform: translateX(-45%); } to { transform: translateX(180%); } }
 @keyframes front-scanner-sweep { 0%, 100% { left: 2%; } 50% { left: 98%; } }
+/* Tails stream behind the lamp: left-side trails glow while it travels right (0-50%), right-side while it travels left. */
+@keyframes front-trail-left { 0%, 40% { opacity: var(--trail-opacity); } 50%, 90% { opacity: 0; } 100% { opacity: var(--trail-opacity); } }
+@keyframes front-trail-right { 0%, 40% { opacity: 0; } 50%, 90% { opacity: var(--trail-opacity); } 100% { opacity: 0; } }
 
 .kitt-sweep { animation: kitt-sweep 1.45s ease-in-out infinite; }
 @keyframes radar-sweep { to { transform: rotate(360deg); } }
@@ -172,15 +175,15 @@
 .kitt-front-shell { position: relative; height: 2.75rem; padding: .55rem 1.1rem; border: 1px solid var(--border); background: linear-gradient(180deg, color-mix(in oklab, var(--card) 88%, transparent), var(--background)); clip-path: polygon(1.25rem 0, calc(100% - 1.25rem) 0, 100% 50%, calc(100% - 1.25rem) 100%, 1.25rem 100%, 0 50%); }
 .kitt-front-track { position: relative; height: 100%; overflow: hidden; border-block: 1px solid color-mix(in oklab, var(--primary) 24%, transparent); background: color-mix(in oklab, var(--background) 94%, var(--primary)); box-shadow: inset 0 0 16px var(--background); }
 .kitt-front-track::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 2.1rem, color-mix(in oklab, var(--primary) 11%, transparent) 2.1rem calc(2.1rem + 1px)); }
-.kitt-front-sweep { position: absolute; top: 50%; left: 2%; width: 0; height: 100%; transform: translate(-50%, -50%); animation: front-scanner-sweep 3.2s ease-in-out infinite; }
+.kitt-front-sweep { --sweep: 2.8s; position: absolute; top: 50%; left: 2%; width: 0; height: 100%; transform: translate(-50%, -50%); animation: front-scanner-sweep var(--sweep) cubic-bezier(.37, 0, .63, 1) infinite; }
 .kitt-front-lamp, .kitt-front-trail { position: absolute; top: 50%; display: block; height: .72rem; transform: translate(-50%, -50%); background: var(--primary); }
-.kitt-front-lamp { width: 2.6rem; opacity: 1; box-shadow: 0 0 7px var(--primary), 0 0 18px var(--primary), 0 0 38px color-mix(in oklab, var(--primary) 72%, transparent); }
-.kitt-front-trail-near { left: -2rem; width: 1.45rem; opacity: .58; box-shadow: 0 0 12px var(--primary); }
-.kitt-front-trail-near-right { left: 2rem; width: 1.45rem; opacity: .58; box-shadow: 0 0 12px var(--primary); }
-.kitt-front-trail-far { left: -3.5rem; width: .8rem; opacity: .22; }
-.kitt-front-trail-far-right { left: 3.5rem; width: .8rem; opacity: .22; }
+.kitt-front-lamp { width: 2.2rem; opacity: 1; box-shadow: 0 0 7px var(--primary), 0 0 18px var(--primary), 0 0 38px color-mix(in oklab, var(--primary) 72%, transparent); }
+.kitt-front-trail-near { --trail-opacity: .62; left: -1.9rem; width: 1.5rem; box-shadow: 0 0 12px var(--primary); animation: front-trail-left var(--sweep) linear infinite; }
+.kitt-front-trail-near-right { --trail-opacity: .62; left: 1.9rem; width: 1.5rem; box-shadow: 0 0 12px var(--primary); animation: front-trail-right var(--sweep) linear infinite; }
+.kitt-front-trail-far { --trail-opacity: .28; left: -3.6rem; width: 1.2rem; animation: front-trail-left var(--sweep) linear infinite; }
+.kitt-front-trail-far-right { --trail-opacity: .28; left: 3.6rem; width: 1.2rem; animation: front-trail-right var(--sweep) linear infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .kitt-sweep, .data-drift, .kitt-front-sweep, .radar-sweep { animation: none; }
+  .kitt-sweep, .data-drift, .kitt-front-sweep, .kitt-front-trail, .radar-sweep { animation: none; }
   .kitt-front-sweep { left: 50%; }
 }
