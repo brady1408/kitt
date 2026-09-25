@@ -122,7 +122,7 @@ export function Console() {
       <div className="relative mx-auto mb-4 w-full max-w-[1600px]"><FrontScanner /></div>
 
       <div className="mx-auto grid w-full max-w-[1600px] gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[250px_minmax(440px,1fr)_330px]">
-        <aside className="space-y-4 xl:min-h-0 xl:overflow-y-auto">
+        <aside className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:overflow-y-auto">
           <SystemPanel connected={state.connected} planStatus={state.usage.plan.fiveHour?.status ?? state.usage.plan.sevenDay?.status ?? 'allowed'} />
           <UsagePanel />
           <section className="border border-border bg-card/75 p-3 panel-cut">
@@ -177,7 +177,7 @@ export function Console() {
           </form>
         </main>
 
-        <aside className="space-y-4 xl:min-h-0 xl:overflow-y-auto">
+        <aside className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:overflow-y-auto">
           <section className="border border-border bg-card/75 p-3 panel-cut">
             <PanelTitle icon={Radio} status={listening ? 'Listening' : mode === 'kitt' ? 'Normal cruise' : mode === 'task' ? 'Auto cruise' : 'Pursuit'}
               action={<Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" title="Clear KITT conversation" aria-label="Clear KITT conversation" onClick={() => { window.speechSynthesis?.cancel(); actions.clearChat() }}><Trash2 /></Button>}>
@@ -215,16 +215,16 @@ function SystemPanel({ connected, planStatus }: { connected: boolean; planStatus
   )
 }
 
-const RADAR = { inner: 22, outer: 50 }
+const RADAR = { inner: 0.42, outer: 0.86 }
 
 function SignalField({ registry, target, onSelect }: { registry: SessionEntry[]; target: string; onSelect: (id: string) => void }) {
   const blips = radarLayout(registry, RADAR)
   const contacts = registry.filter((e) => e.status !== 'offline').length
   return (
-    <section className="relative h-44 overflow-hidden border border-border bg-card/75 p-3 panel-cut">
+    <section className="relative h-44 overflow-hidden border border-border bg-card/75 p-3 panel-cut xl:h-auto xl:min-h-44 xl:flex-1">
       <PanelTitle icon={Radio} status={`${contacts} contact${contacts === 1 ? '' : 's'}`}>Signal field</PanelTitle>
-      <div className="absolute left-1/2 top-[60%] h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25">
-        <div className="absolute inset-[18px] rounded-full border border-dashed border-primary/30" />
+      <div className="absolute left-1/2 top-[58%] aspect-square h-[60%] max-h-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25">
+        <div className="absolute inset-[16%] rounded-full border border-dashed border-primary/30" />
         <div className="radar-sweep absolute left-1/2 top-1/2 h-px w-1/2 origin-left bg-primary shadow-signal" />
         {blips.map(({ entry, x, y }) => (
           <button
@@ -235,7 +235,7 @@ function SignalField({ registry, target, onSelect }: { registry: SessionEntry[];
             disabled={entry.kind === 'task'}
             onClick={() => onSelect(entry.id)}
             className={`absolute -translate-x-1/2 -translate-y-1/2 disabled:cursor-default ${entry.id === target ? 'h-2.5 w-2.5 ring-1 ring-primary/70 ring-offset-1 ring-offset-background' : 'h-2 w-2'} ${STATUS_DOT[entry.status]}`}
-            style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}
+            style={{ left: `${50 + x * 50}%`, top: `${50 + y * 50}%` }}
           />
         ))}
       </div>
@@ -349,7 +349,7 @@ function TaskPanel({ cwd, onCwd }: { cwd: string; onCwd: (v: string) => void }) 
     setPrompt('')
   }
   return (
-    <section className="flex min-h-[390px] flex-col border border-border bg-card/75 p-3 panel-cut">
+    <section className="flex min-h-[390px] flex-col border border-border bg-card/75 p-3 panel-cut xl:min-h-0 xl:flex-1">
       <PanelTitle icon={Bot} status={`${running} running`}>Task queue</PanelTitle>
       <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={2} placeholder="Assign a background operation…" className="w-full resize-none border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
       <input value={cwd} onChange={(event) => onCwd(event.target.value)} placeholder="Working directory (default ~/pa)" className="mt-2 w-full border border-input bg-background px-3 py-1.5 font-mono text-xs outline-none focus:border-primary" />
