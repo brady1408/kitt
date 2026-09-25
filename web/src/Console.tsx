@@ -171,13 +171,13 @@ export function Console() {
               <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setMode('kitt')}><X />Normal cruise</Button>
             </div>
           )}
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-4 md:p-6">
             {messages.length === 0 && !live && <div className="py-12 text-center"><p className="font-display text-2xl text-primary">Voice command ready</p><p className="mt-2 text-sm text-muted-foreground">Good evening. How may I assist you?</p></div>}
             {messages.map((message) => <MessageRow key={message.id} message={message} />)}
             {live && (
               <div className="flex gap-3">
                 <span className="mt-1 h-2 w-2 shrink-0 animate-pulse bg-primary shadow-signal" />
-                <div className="prose prose-invert max-w-none text-sm text-foreground">
+                <div className="prose prose-invert min-w-0 max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere] prose-pre:whitespace-pre-wrap prose-code:break-all">
                   <span className="mb-1 block font-display text-sm text-primary">K.I.T.T. / RESPONSE</span>
                   {live.tools.map((t, i) => <ToolLine key={i} summary={t} />)}
                   {live.text ? <Markdown>{live.text}</Markdown> : <p className="animate-pulse font-mono text-xs uppercase text-amber">Processing command…</p>}
@@ -269,7 +269,7 @@ function SignalField({ registry, activity, target, onSelect }: { registry: Sessi
           />
         ))}
       </div>
-      <ul className="min-h-0 max-h-40 flex-1 space-y-1 overflow-y-auto border-t border-border pt-2 font-mono text-[10px] uppercase xl:max-h-none" aria-label="Recent activity">
+      <ul className="min-h-0 max-h-40 flex-1 space-y-1 overflow-y-auto overflow-x-hidden border-t border-border pt-2 font-mono text-[10px] uppercase xl:max-h-none" aria-label="Recent activity">
         {activity.length === 0 && <li className="py-3 text-center normal-case text-muted-foreground">No signals yet.</li>}
         {activity.map((a) => {
           const selectable = a.sessionId !== undefined && known.has(a.sessionId) && a.kind !== 'task'
@@ -346,17 +346,17 @@ function Metric({ label, value, width, tone = 'amber' }: { label: string; value:
 }
 
 function ToolLine({ summary }: { summary: string }) {
-  return <p className="my-1 font-mono text-[10px] uppercase text-muted-foreground">→ {summary}</p>
+  return <p className="my-1 break-all font-mono text-[10px] uppercase text-muted-foreground">→ {summary}</p>
 }
 
 function MessageRow({ message }: { message: ChatMessage }) {
   if (message.role === 'system') return <p className="text-center font-mono text-[10px] uppercase text-green">{message.text}</p>
-  if (message.role === 'user') return <div className="flex justify-end"><div className="max-w-[82%] border border-border bg-secondary/70 px-4 py-3 text-sm">{message.text}</div></div>
+  if (message.role === 'user') return <div className="flex justify-end"><div className="max-w-[82%] break-words border border-border bg-secondary/70 px-4 py-3 text-sm [overflow-wrap:anywhere]">{message.text}</div></div>
   if (message.toolSummary !== null) return <div className="flex gap-3"><span className="mt-1 h-2 w-2 shrink-0" /><ToolLine summary={message.toolSummary} /></div>
   return (
     <div className="flex gap-3">
       <span className="mt-1 h-2 w-2 shrink-0 bg-primary shadow-signal" />
-      <div className="prose prose-invert max-w-none text-sm text-foreground">
+      <div className="prose prose-invert min-w-0 max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere] prose-pre:whitespace-pre-wrap prose-code:break-all">
         <span className="mb-1 block font-display text-sm text-primary">K.I.T.T. / RESPONSE</span>
         <Markdown>{message.text}</Markdown>
       </div>
@@ -440,7 +440,7 @@ function TaskPanel({ cwd, onCwd, defaultDir }: { cwd: string; onCwd: (v: string)
       <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={2} placeholder="Assign a background operation…" className="w-full resize-none border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
       <input value={cwd} onChange={(event) => onCwd(event.target.value)} placeholder={`Working directory (default ${defaultDir})`} className="mt-2 w-full border border-input bg-background px-3 py-1.5 font-mono text-xs outline-none focus:border-primary" />
       <Button onClick={run} disabled={!prompt.trim()} className="mt-2 w-full"><Play />Dispatch agent</Button>
-      <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
+      <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden">
         {state.tasks.length === 0 && <div className="py-8 text-center text-xs text-muted-foreground">Queue clear. Agents standing by.</div>}
         {state.tasks.map((task) => (
           <div key={task.id} className="border border-border bg-background/50">
@@ -454,7 +454,7 @@ function TaskPanel({ cwd, onCwd, defaultDir }: { cwd: string; onCwd: (v: string)
                 : <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => actions.deleteTask(task.id)} aria-label="Remove task"><Trash2 /></Button>}
             </div>
             {open === task.id && (
-              <div className="prose prose-invert max-w-none border-t border-border p-3 text-xs">
+              <div className="prose prose-invert max-w-none break-words border-t border-border p-3 text-xs [overflow-wrap:anywhere] prose-pre:whitespace-pre-wrap prose-code:break-all">
                 <p className="font-mono text-[10px] uppercase text-muted-foreground">{task.status} · {task.cwd}</p>
                 <Markdown>{task.output || '_Agent working…_'}</Markdown>
                 {task.status === 'done' && <Button variant="link" size="sm" className="mt-1 px-0" onClick={() => { resumeAudio(); kittVoice.cancel(); kittVoice.speak(task.output) }}><Volume2 />Read aloud</Button>}
