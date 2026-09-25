@@ -34,7 +34,7 @@ export function Console() {
     if (voiceRef.current && msg.target === targetRef.current && msg.text) speak(msg.text)
   }), [actions])
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' })
+    endRef.current?.scrollIntoView({ block: 'end' })
     if (!busy && window.matchMedia('(min-width: 768px)').matches) inputRef.current?.focus()
   }, [messages, live, busy])
 
@@ -72,7 +72,7 @@ export function Console() {
   const activeCount = state.registry.filter((e) => e.status === 'working').length
 
   return (
-    <div className="console-grid relative min-h-screen overflow-hidden bg-background p-3 text-foreground md:p-5">
+    <div className="console-grid relative min-h-screen overflow-hidden bg-background p-3 text-foreground md:p-5 xl:flex xl:h-screen xl:flex-col">
       <div className="scanlines pointer-events-none fixed inset-0 z-50 opacity-15" />
       <header className="mx-auto mb-4 flex max-w-[1600px] items-center justify-between border-b border-border bg-card/60 px-4 py-3 panel-cut">
         <div className="flex min-w-0 items-center gap-3">
@@ -85,8 +85,8 @@ export function Console() {
 
       <div className="relative mx-auto mb-4 max-w-[1600px]"><FrontScanner /></div>
 
-      <div className="mx-auto grid max-w-[1600px] gap-4 xl:grid-cols-[250px_minmax(440px,1fr)_330px]">
-        <aside className="space-y-4">
+      <div className="mx-auto grid w-full max-w-[1600px] gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[250px_minmax(440px,1fr)_330px]">
+        <aside className="space-y-4 xl:min-h-0 xl:overflow-y-auto">
           <section className="border border-border bg-card/75 p-3 panel-cut">
             <PanelTitle icon={Activity} status="Nominal">System status</PanelTitle>
             <Metric label="Neural load" value="64%" width="64%" />
@@ -111,14 +111,14 @@ export function Console() {
           </section>
         </aside>
 
-        <main className="flex min-h-[720px] flex-col overflow-hidden border border-border bg-card/75 panel-cut">
+        <main className="flex min-h-[720px] flex-col overflow-hidden border border-border bg-card/75 panel-cut xl:min-h-0">
           {target !== KITT && (
             <div className="flex items-center justify-between border-b border-border bg-primary/10 px-4 py-2 font-mono text-[10px] uppercase">
               <span>Channel → {targetEntry?.name ?? target} <span className="text-muted-foreground">{targetEntry?.cwd}</span>{targetOffline && <span className="ml-2 text-destructive">offline</span>}</span>
               <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setTarget(KITT)}><X />Back to KITT</Button>
             </div>
           )}
-          <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
             {messages.length === 0 && !live && <div className="py-12 text-center"><p className="font-display text-2xl text-primary">Voice command ready</p><p className="mt-2 text-sm text-muted-foreground">Good evening. How may I assist you?</p></div>}
             {messages.map((message) => <MessageRow key={message.id} message={message} />)}
             {live && (
@@ -147,7 +147,7 @@ export function Console() {
           </form>
         </main>
 
-        <aside className="space-y-4">
+        <aside className="space-y-4 xl:min-h-0 xl:overflow-y-auto">
           <section className="border border-border bg-card/75 p-3 panel-cut">
             <PanelTitle icon={Radio} status={listening ? 'Listening' : 'Online'}>Comms control</PanelTitle>
             <div className="mb-3"><VoiceBox getLevel={getLevel} /></div>
@@ -161,7 +161,7 @@ export function Console() {
         </aside>
       </div>
 
-      <footer className="mx-auto mt-4 flex max-w-[1600px] items-center justify-between border-t border-border pt-2 font-mono text-[9px] uppercase text-muted-foreground">
+      <footer className="mx-auto mt-4 flex w-full max-w-[1600px] items-center justify-between border-t border-border pt-2 font-mono text-[9px] uppercase text-muted-foreground">
         <span>{state.connected ? 'All systems operational' : 'Reconnecting…'}</span><span className="hidden sm:inline">Encrypted channel / Agent mesh connected</span><span className="text-primary">KITT-OS 4.18</span>
       </footer>
     </div>
