@@ -12,7 +12,7 @@ Everything runs on the machine where Claude Code is installed and logged in. Not
 - **Dispatch background tasks.** Each task is a one-shot Claude Code session in a directory you pick. Up to three run at once; the rest queue.
 - **Reach your terminals.** Any interactive `claude` session launched through the `ck` wrapper appears on the radar and in the Agent network panel. Pick it and your messages are pushed into that terminal; its replies come back to the console.
 - **See the machine.** System status shows real CPU load, memory, drive space and the last API round-trip. Agent metrics shows the session's context usage and your plan's five-hour and seven-day windows, straight from the rate-limit events Claude Code emits.
-- **Voice.** Browser speech recognition in. Out, either an optional local text-to-speech sidecar (Kokoro, runs on CPU, sounds the part) or the browser's own voices. Replies are read as they arrive, chunked at tool calls.
+- **Voice.** Push-to-talk in: press `MIC`, speak, press again, and the clip is transcribed locally by Whisper in the sidecar (the browser's own recognizer is the fallback). Out, the same sidecar speaks with Kokoro, or the browser's voices without it. Replies are read as they arrive, chunked at tool calls.
 
 ## How it fits together
 
@@ -62,7 +62,7 @@ loginctl enable-linger $USER      # keep it running when you log out
 
 ### Give KITT a voice (optional)
 
-Browser voices are serviceable; the sidecar is much better. It runs [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) on the CPU, loopback only, and the hub proxies it at `/tts`. Needs Python 3.10+ and about 400 MB for the model.
+Browser voices are serviceable; the sidecar is much better. It runs [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) for speech and [faster-whisper](https://github.com/SYSTRAN/faster-whisper) for the microphone, both on the CPU, loopback only; the hub proxies them at `/tts` and `/stt`. Needs Python 3.10+ and about 550 MB for the models (Whisper's downloads itself on first use).
 
 ```sh
 cd ~/ws/kitt/tts
@@ -71,6 +71,7 @@ curl -L -o models/kokoro-v1.0.onnx https://github.com/thewh1teagle/kokoro-onnx/r
 curl -L -o models/voices-v1.0.bin   https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
 .venv/bin/python server.py           # or install deploy/kitt-tts.service the same way as the hub unit
 .venv/bin/python smoke.py            # synthesizes one sentence and checks it
+.venv/bin/python smoke-stt.py        # synthesizes a sentence, transcribes it back, checks the words survived
 ```
 
 With the sidecar up, the Voice picker in Comms control lists its voices first; `am_michael` is the default and the closest to the character. Without it, the console falls back to the browser voice automatically.
@@ -121,7 +122,7 @@ Hub environment variables:
 
 | `KITT_TTS_URL` | `http://127.0.0.1:7333` | Where the text-to-speech sidecar listens |
 
-Sidecar environment variables: `KITT_TTS_PORT` (7333), `KITT_TTS_HOST` (127.0.0.1), `KITT_TTS_VOICE` (`am_michael`), `KITT_TTS_MODEL` and `KITT_TTS_VOICES` (model file paths).
+Sidecar environment variables: `KITT_TTS_PORT` (7333), `KITT_TTS_HOST` (127.0.0.1), `KITT_TTS_VOICE` (`am_michael`), `KITT_TTS_MODEL` and `KITT_TTS_VOICES` (model file paths), `KITT_STT_MODEL` (`base.en`; try `small.en` for better accuracy at about twice the time).
 
 Spoke environment variables: `KITT_HUB_URL` (default `ws://127.0.0.1:7330/spoke`) and `KITT_CHANNEL` (set to `1` by `ck`).
 

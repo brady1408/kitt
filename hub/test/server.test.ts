@@ -173,3 +173,20 @@ test('with tls the hub serves https for browsers, plain http on the loopback por
   s.send({ type: 'register', sessionId: 'tls-spoke', pid: 1, cwd: '/home/user/x', name: 'x' })
   await s.waitFor((f) => f.type === 'registered')
 })
+
+test('POST /stt forwards the audio body and content type to the sidecar', async () => {
+  const seen: { method: string; type: string | null; body: string }[] = []
+  const server = Bun.serve({
+    port: 0, hostname: '127.0.0.1',
+    async fetch(req) {
+      const url = new URL(req.url)
+      if (url.pathname === '/stt') { seen.push({ method: req.method, type: req.headers.get('content-type'), body: await req.text() }); return Response.json({ text: 'hello kitt' }) }
+      return new Response('nope', { status: 404 })
+    },
+  })
+  stops.push(() => server.stop(true))
+  const { hub } = boot({ ttsUrl: `http://127.0.0.1:${server.port}` })
+  const res = await fetch(`http://127.0.0.1:${hub.port}/stt`, { method: 'POST', headers: { 'Content-Type': 'audio/webm' }, body: 'OPUSBYTES' })
+  expect(await res.json()).toEqual({ text: 'hello kitt' })
+  expect(seen).toEqual([{ method: 'POST', type: 'audio/webm', body: 'OPUSBYTES' }])
+})

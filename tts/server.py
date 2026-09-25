@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""KITT text-to-speech sidecar: Kokoro via ONNX Runtime, loopback HTTP, returns WAV.
+"""KITT voice sidecar: Kokoro text-to-speech and Whisper speech-to-text, loopback HTTP.
 
-  GET /healthz            -> "ok"
-  GET /voices             -> JSON list of voice ids
-  GET /tts?text=..&voice=..&speed=..  -> audio/wav
-  POST /tts  {"text","voice","speed"}  -> audio/wav
+  GET  /healthz                          -> "ok"
+  GET  /voices                           -> JSON list of voice ids
+  GET  /tts?text=..&voice=..&speed=..    -> audio/wav
+  POST /tts  {"text","voice","speed"}    -> audio/wav
+  POST /stt  (body: audio, any format ffmpeg/PyAV can read, e.g. webm/opus or wav) -> {"text": "..."}
 """
 import io
 import json
 import os
 import sys
+import tempfile
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -22,7 +25,9 @@ VOICES = os.environ.get("KITT_TTS_VOICES", os.path.join(HERE, "models", "voices-
 HOST = os.environ.get("KITT_TTS_HOST", "127.0.0.1")
 PORT = int(os.environ.get("KITT_TTS_PORT", "7333"))
 DEFAULT_VOICE = os.environ.get("KITT_TTS_VOICE", "am_michael")
+STT_MODEL = os.environ.get("KITT_STT_MODEL", "base.en")
 MAX_CHARS = 4000
+MAX_AUDIO_BYTES = 25 * 1024 * 1024
 
 kokoro = Kokoro(MODEL, VOICES)
 VOICE_IDS = sorted(kokoro.get_voices())
@@ -30,6 +35,29 @@ VOICE_IDS = sorted(kokoro.get_voices())
 def _rank(v: str) -> tuple:
     return (0 if v.startswith("am_") else 1 if v.startswith("a") else 2 if v.startswith("b") else 3, v)
 VOICE_IDS.sort(key=_rank)
+
+
+_whisper = None
+_whisper_lock = threading.Lock()
+
+
+def whisper():
+    """Loads the speech-to-text model on first use so startup stays fast when nobody uses the mic."""
+    global _whisper
+    with _whisper_lock:
+        if _whisper is None:
+            from faster_whisper import WhisperModel
+            _whisper = WhisperModel(STT_MODEL, device="cpu", compute_type="int8")
+            print(f"kitt-tts: loaded speech-to-text model {STT_MODEL}", flush=True)
+        return _whisper
+
+
+def transcribe(audio: bytes, suffix: str) -> str:
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as f:
+        f.write(audio)
+        f.flush()
+        segments, _info = whisper().transcribe(f.name, language="en", beam_size=1, vad_filter=True)
+        return " ".join(seg.text.strip() for seg in segments).strip()
 
 
 def synthesize(text: str, voice: str, speed: float) -> bytes:
@@ -79,7 +107,10 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, b"not found", "text/plain")
 
     def do_POST(self) -> None:  # noqa: N802
-        if urlparse(self.path).path != "/tts":
+        path = urlparse(self.path).path
+        if path == "/stt":
+            return self._transcribe()
+        if path != "/tts":
             return self._send(404, b"not found", "text/plain")
         length = int(self.headers.get("Content-Length", "0"))
         try:
@@ -87,6 +118,22 @@ class Handler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             return self._send(400, b"invalid json", "text/plain")
         self._speak(str(body.get("text", "")), str(body.get("voice", DEFAULT_VOICE)), float(body.get("speed", 1.0)))
+
+    def _transcribe(self) -> None:
+        length = int(self.headers.get("Content-Length", "0"))
+        if length <= 0:
+            return self._send(400, b"audio body required", "text/plain")
+        if length > MAX_AUDIO_BYTES:
+            return self._send(413, b"audio too large", "text/plain")
+        ctype = self.headers.get("Content-Type", "application/octet-stream").split(";")[0].strip()
+        suffix = {"audio/webm": ".webm", "video/webm": ".webm", "audio/ogg": ".ogg", "audio/wav": ".wav", "audio/x-wav": ".wav", "audio/mp4": ".m4a", "audio/mpeg": ".mp3"}.get(ctype, ".bin")
+        audio = self.rfile.read(length)
+        try:
+            text = transcribe(audio, suffix)
+        except Exception as e:  # noqa: BLE001
+            print(f"transcription failed: {e}", file=sys.stderr)
+            return self._send(500, b"transcription failed", "text/plain")
+        self._send(200, json.dumps({"text": text}).encode(), "application/json")
 
     def log_message(self, fmt: str, *args) -> None:  # quieter than the default
         if self.path.startswith("/healthz"):

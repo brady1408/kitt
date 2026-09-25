@@ -38,11 +38,13 @@ export function hookMedia(el: HTMLMediaElement) {
 
 let micStream: MediaStream | null = null;
 let micSrc: MediaStreamAudioSourceNode | null = null;
-export async function startMic() {
+export async function startMic(): Promise<MediaStream> {
   ensure();
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error("microphone unavailable (insecure origin or unsupported browser)");
   micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   micSrc = ctx!.createMediaStreamSource(micStream);
   micSrc.connect(analyser!);
+  return micStream;
 }
 export function stopMic() {
   micSrc?.disconnect();

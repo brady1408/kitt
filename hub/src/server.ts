@@ -111,6 +111,7 @@ export function createHub(deps: HubDeps): { port: number; localPort: number | nu
       }
       if (url.pathname === '/tts/voices') return proxyTts(deps.ttsUrl, '/voices')
       if (url.pathname === '/tts') return proxyTts(deps.ttsUrl, `/tts${url.search}`)
+      if (url.pathname === '/stt' && req.method === 'POST') return proxyTts(deps.ttsUrl, '/stt', req)
       if (url.pathname === '/ws') {
         if (!originAllowed(req)) return new Response('cross-origin websocket refused', { status: 403 })
         return srv.upgrade(req, { data: { kind: 'browser' } }) ? undefined : new Response('upgrade failed', { status: 400 })
@@ -158,13 +159,19 @@ function originAllowed(req: Request): boolean {
 }
 
 // The browser only ever talks to the hub; the sidecar stays on loopback. 503 lets the browser fall back to its own voice.
-async function proxyTts(ttsUrl: string | undefined, path: string): Promise<Response> {
-  if (!ttsUrl) return new Response('text-to-speech sidecar not configured', { status: 503 })
+async function proxyTts(ttsUrl: string | undefined, path: string, req?: Request): Promise<Response> {
+  if (!ttsUrl) return new Response('voice sidecar not configured', { status: 503 })
   try {
-    const upstream = await fetch(ttsUrl + path, { signal: AbortSignal.timeout(60_000) })
+    const init: RequestInit = { signal: AbortSignal.timeout(60_000) }
+    if (req) {
+      init.method = req.method
+      init.body = await req.arrayBuffer()
+      init.headers = { 'Content-Type': req.headers.get('content-type') ?? 'application/octet-stream' }
+    }
+    const upstream = await fetch(ttsUrl + path, init)
     return new Response(upstream.body, { status: upstream.status, headers: { 'Content-Type': upstream.headers.get('content-type') ?? 'application/octet-stream', 'Cache-Control': 'no-store' } })
   } catch {
-    return new Response('text-to-speech sidecar unavailable', { status: 503 })
+    return new Response('voice sidecar unavailable', { status: 503 })
   }
 }
 

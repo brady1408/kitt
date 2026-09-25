@@ -5,7 +5,9 @@ import type { ChatMessage, PlanWindow, SessionEntry, Task } from '@kitt/hub/prot
 import { Button } from '@/components/ui/button'
 import { FrontScanner } from '@/components/VoiceBox'
 import { ActivityBar } from '@/components/ActivityBar'
-import { getLevel, getVoiceName, listVoices, resumeAudio, setVoiceName, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
+import { getLevel, getVoiceName, listVoices, resumeAudio, setVoiceName, watchMediaElements } from '@/lib/audio-meter'
+import { createKittMic } from '@/lib/kitt-mic'
+import type { MicState } from '@/lib/mic'
 import { getServerVoices, kittVoice, loadServerVoices, onServerVoices } from '@/lib/kitt-voice'
 import { useHub } from '@/lib/hub-context'
 import { radarLayout } from '@/lib/radar'
@@ -29,8 +31,11 @@ export function Console() {
   const targetRef = useRef(target)
   targetRef.current = target
   const [input, setInput] = useState('')
-  const [listening, setListening] = useState(false)
-  const recRef = useRef<{ stop: () => void } | null>(null)
+  const [micState, setMicState] = useState<MicState>('idle')
+  const listening = micState !== 'idle'
+  const sendRef = useRef<(text: string) => void>(() => {})
+  const micRef = useRef<ReturnType<typeof createKittMic> | null>(null)
+  if (!micRef.current) micRef.current = createKittMic({ onState: setMicState, onText: (t) => sendRef.current(t) })
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -94,26 +99,11 @@ export function Console() {
     : targetOffline ? (terminalEntry ? 'Session offline' : 'Select a terminal on the radar or in Agent network')
     : mode === 'pursuit' ? `Transmit to ${terminalEntry?.name ?? 'terminal'}…` : 'Awaiting command…'
 
+  sendRef.current = (text: string) => { setInput(text); send(text) }
   const toggleMic = async () => {
     resumeAudio()
-    if (listening) { recRef.current?.stop(); return }
-    const w = window as Window & { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }
-    const Recognition = w.SpeechRecognition ?? w.webkitSpeechRecognition
-    try { await startMic() } catch { /* the browser shows its own permission feedback */ }
-    if (!Recognition) { window.alert("Voice input isn't supported in this browser — try Chrome."); stopMic(); return }
-    const recognition = new Recognition()
-    recognition.lang = 'en-US'
-    recognition.interimResults = true
-    let finalText = ''
-    recognition.onresult = (event: any) => {
-      let interim = ''
-      for (const result of event.results) result.isFinal ? (finalText = result[0].transcript) : (interim = result[0].transcript)
-      setInput(finalText || interim)
-    }
-    recognition.onend = () => { setListening(false); stopMic(); if (finalText) send(finalText) }
-    recRef.current = recognition
-    recognition.start()
-    setListening(true)
+    kittVoice.cancel()
+    await micRef.current?.toggle()
   }
 
   const activeCount = state.registry.filter((e) => e.status === 'working').length
@@ -190,7 +180,7 @@ export function Console() {
 
         <aside className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:overflow-y-auto">
           <section className="border border-border bg-card/75 p-3 panel-cut">
-            <PanelTitle icon={Radio} status={listening ? 'Listening' : mode === 'kitt' ? 'Normal cruise' : mode === 'task' ? 'Auto cruise' : 'Pursuit'}
+            <PanelTitle icon={Radio} status={micState === 'recording' ? 'Listening' : micState === 'transcribing' ? 'Transcribing' : mode === 'kitt' ? 'Normal cruise' : mode === 'task' ? 'Auto cruise' : 'Pursuit'}
               action={<Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" title="Clear KITT conversation" aria-label="Clear KITT conversation" onClick={() => { kittVoice.cancel(); actions.clearChat() }}><Trash2 /></Button>}>
               Comms control
             </PanelTitle>
