@@ -77,7 +77,7 @@ test('spoke registers with the hub, relays deliveries as channel notifications, 
   expect(rep).toEqual({ type: 'reply', text: 'pong' })
 })
 
-test('a spoke spawned by an SDK-driven session serves tools but never registers with the hub', async () => {
+test('a spoke spawned by an SDK-driven session exposes no tools and never registers with the hub', async () => {
   const hub = fakeHub()
   const client = new Client({ name: 'test', version: '0.0.0' }, { capabilities: {} })
   const transport = new StdioClientTransport({
@@ -94,7 +94,7 @@ test('a spoke spawned by an SDK-driven session serves tools but never registers 
   })
   cleanups.push(() => client.close())
   await client.connect(transport)
-  expect((await client.listTools()).tools.map((t) => t.name)).toEqual(['reply'])
+  expect((await client.listTools()).tools).toEqual([])
   await new Promise((r) => setTimeout(r, 800))
   expect(hub.received).toEqual([])
   expect(hub.sockets).toHaveLength(0)

@@ -19,6 +19,9 @@ const HEARTBEAT_MS = 15_000
 const MAX_BACKOFF_MS = 10_000
 
 const log = (s: string) => process.stderr.write(`kitt channel: ${s}\n`)
+// Claude Code spawns user-scope MCP servers inside the hub's own SDK sessions too. Channel
+// pushes never reach those, so the spoke stays inert there: no tools, no hub registration.
+const SDK_SESSION = process.env['CLAUDE_CODE_ENTRYPOINT'] === 'sdk-cli'
 
 let ws: WebSocket | null = null
 let backoff = 500
@@ -28,17 +31,19 @@ const mcp = new Server(
   { name: 'kitt', version: '0.1.0' },
   {
     capabilities: { tools: {}, experimental: { 'claude/channel': {} } },
-    instructions: [
-      'Messages from the KITT console arrive as <channel source="kitt" chat_id="kitt" message_id="...">.',
-      'The sender is looking at the KITT console, not this terminal: text you print here never reaches them.',
-      'For EVERY console message, call the mcp__kitt__reply tool with your answer as `text`. Do not answer in the transcript instead.',
-      'Keep replies concise; the console may read them aloud.',
-    ].join(' '),
+    instructions: SDK_SESSION
+      ? 'The KITT channel is inactive in this session and exposes no tools. Answer normally.'
+      : [
+        'Messages from the KITT console arrive as <channel source="kitt" chat_id="kitt" message_id="...">.',
+        'The sender is looking at the KITT console, not this terminal: text you print here never reaches them.',
+        'For EVERY console message, call the mcp__kitt__reply tool with your answer as `text`. Do not answer in the transcript instead.',
+        'Keep replies concise; the console may read them aloud.',
+      ].join(' '),
   },
 )
 
 mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [{
+  tools: SDK_SESSION ? [] : [{
     name: 'reply',
     description: 'Send a message to the KITT console.',
     inputSchema: {
@@ -89,7 +94,7 @@ function connect(): void {
 }
 
 await mcp.connect(new StdioServerTransport())
-if (process.env['CLAUDE_CODE_ENTRYPOINT'] === 'sdk-cli') {
+if (SDK_SESSION) {
   log('spawned by an SDK-driven session; channel pushes cannot reach it, so not registering with the hub')
 } else {
   connect()

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Launch Claude Code with the KITT channel attached so this session shows up in the console.
+# Requires: claude mcp add --scope user kitt -- bun run ~/ws/kitt/channel/server.ts   (one time)
+exec claude --dangerously-load-development-channels server:kitt "$@"
