@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 const SEGMENTS = 12;
 
-export function VoiceBox({ getLevel }: { getLevel: () => number }) {
+export function VoiceBox({ getLevel, frameless = false }: { getLevel: () => number; frameless?: boolean }) {
   const cols = useRef<(HTMLDivElement | null)[][]>([[], [], []]);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function VoiceBox({ getLevel }: { getLevel: () => number }) {
   }, [getLevel]);
 
   return (
-    <div className="voice-chamber relative flex min-h-56 items-center justify-center overflow-hidden border border-border bg-card/70 p-6">
+    <div className={frameless ? "relative flex items-center justify-center py-2" : "voice-chamber relative flex min-h-56 items-center justify-center overflow-hidden border border-border bg-card/70 p-6"}>
       <div className="relative z-10 flex items-center justify-center gap-5">
         {[0, 1, 2].map((column) => (
           <div key={column} className={`flex flex-col gap-1.5 ${column === 1 ? "w-12" : "w-8"}`}>
@@ -47,9 +47,9 @@ export function VoiceBox({ getLevel }: { getLevel: () => number }) {
           </div>
         ))}
       </div>
-      <div className="absolute inset-x-5 bottom-4 flex items-center justify-between font-mono text-[9px] uppercase text-muted-foreground">
+      {!frameless && <div className="absolute inset-x-5 bottom-4 flex items-center justify-between font-mono text-[9px] uppercase text-muted-foreground">
         <span>Voice matrix</span><span className="text-green">Live</span>
-      </div>
+      </div>}
     </div>
   );
 }

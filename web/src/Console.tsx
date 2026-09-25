@@ -1,19 +1,24 @@
 import { Markdown } from '@/components/Markdown'
-import { useEffect, useRef, useState } from 'react'
-import { Activity, Bot, ChevronDown, Gauge, Mic, MicOff, Play, Radio, Send, Square, Trash2, Volume2, VolumeX, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Activity, Bot, ChevronDown, Gauge, Play, Radio, Send, Square, Trash2, Volume2, X } from 'lucide-react'
 import type { ChatMessage, PlanWindow, SessionEntry, Task } from '@kitt/hub/protocol'
 import { Button } from '@/components/ui/button'
-import { FrontScanner, VoiceBox, Scanner } from '@/components/VoiceBox'
+import { FrontScanner, Scanner } from '@/components/VoiceBox'
 import { getLevel, resumeAudio, speak, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
 import { useHub } from '@/lib/hub-context'
 import { radarLayout } from '@/lib/radar'
+import { deriveLamps, type Lamp } from '@/lib/lamps'
+import { VoiceModule, type SendMode } from '@/components/VoiceModule'
 
 const KITT = 'kitt'
 const NO_MESSAGES: ChatMessage[] = []
 
 export function Console() {
   const { state, actions } = useHub()
-  const [target, setTarget] = useState(KITT)
+  const [mode, setMode] = useState<SendMode>('kitt')
+  const [terminal, setTerminal] = useState<string | null>(null)
+  const [taskCwd, setTaskCwd] = useState('')
+  const target = mode === 'pursuit' && terminal ? terminal : KITT
   const [voiceOn, setVoiceOn] = useState(true)
   const voiceRef = useRef(voiceOn)
   voiceRef.current = voiceOn
@@ -29,7 +34,18 @@ export function Console() {
   const live = state.live[target] ?? null
   const busy = live !== null
   const targetEntry = state.registry.find((e) => e.id === target)
-  const targetOffline = target !== KITT && targetEntry?.status === 'offline'
+  const targetOffline = mode === 'pursuit' && (!terminal || targetEntry?.status === 'offline')
+  const selectSession = (entry: SessionEntry) => {
+    if (entry.kind === 'spoke') { setTerminal(entry.id); setMode('pursuit') }
+    else if (entry.kind === 'kitt') setMode('kitt')
+  }
+  const lamps = deriveLamps({
+    voiceOn, listening, connected: state.connected,
+    planStatus: state.usage.plan.fiveHour?.status ?? state.usage.plan.sevenDay?.status ?? 'allowed',
+    system: state.system,
+    tasksRunning: state.tasks.filter((t) => t.status === 'running').length,
+    terminalsOnline: state.registry.filter((e) => e.kind === 'spoke' && e.status !== 'offline').length,
+  })
 
   useEffect(() => watchMediaElements(), [])
   useEffect(() => actions.onDone((msg) => {
@@ -50,12 +66,21 @@ export function Console() {
 
   const send = (text: string) => {
     const value = text.trim()
-    if (!value || busy || targetOffline) return
+    if (!value) return
+    if (mode === 'task') { actions.createTask(value, taskCwd.trim() || undefined); setInput(''); return }
+    if (busy || targetOffline) return
     resumeAudio()
     window.speechSynthesis?.cancel()
     actions.sendChat(target, value)
     setInput('')
   }
+  const onLamp = (id: Lamp['id']) => {
+    if (id === 'voice') { setVoiceOn((v) => !v); window.speechSynthesis?.cancel() }
+    if (id === 'mic') void toggleMic()
+  }
+  const placeholder = mode === 'task' ? `Assign a background operation… (${taskCwd.trim() || '~/pa'})`
+    : targetOffline ? (terminal ? 'Session offline' : 'Select a terminal on the radar or in Agent network')
+    : mode === 'pursuit' ? `Transmit to ${targetEntry?.name ?? 'terminal'}…` : 'Awaiting command…'
 
   const toggleMic = async () => {
     resumeAudio()
@@ -102,18 +127,24 @@ export function Console() {
           <section className="border border-border bg-card/75 p-3 panel-cut">
             <PanelTitle icon={Bot} status={`${activeCount} active`}>Agent network</PanelTitle>
             {state.registry.map((entry) => (
-              <AgentRow key={entry.id} entry={entry} selected={entry.id === target} onSelect={() => setTarget(entry.id)} />
+              <AgentRow key={entry.id} entry={entry} selected={entry.id === target} onSelect={() => selectSession(entry)} />
             ))}
             {state.registry.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No sessions online.</p>}
           </section>
-          <SignalField registry={state.registry} target={target} onSelect={setTarget} />
+          <SignalField registry={state.registry} target={target} onSelect={(id) => { const e = state.registry.find((x) => x.id === id); if (e) selectSession(e) }} />
         </aside>
 
         <main className="flex min-h-[720px] flex-col overflow-hidden border border-border bg-card/75 panel-cut xl:min-h-0">
-          {target !== KITT && (
+          {mode === 'pursuit' && (
             <div className="flex items-center justify-between border-b border-border bg-primary/10 px-4 py-2 font-mono text-[10px] uppercase">
-              <span>Channel → {targetEntry?.name ?? target} <span className="text-muted-foreground">{targetEntry?.cwd}</span>{targetOffline && <span className="ml-2 text-destructive">offline</span>}</span>
-              <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setTarget(KITT)}><X />Back to KITT</Button>
+              <span>Pursuit → {targetEntry?.name ?? 'no terminal selected'} <span className="text-muted-foreground">{targetEntry?.cwd}</span>{terminal && targetOffline && <span className="ml-2 text-destructive">offline</span>}</span>
+              <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setMode('kitt')}><X />Normal cruise</Button>
+            </div>
+          )}
+          {mode === 'task' && (
+            <div className="flex items-center justify-between border-b border-border bg-amber/10 px-4 py-2 font-mono text-[10px] uppercase">
+              <span className="text-amber">Auto cruise → commands dispatch as background tasks in {taskCwd.trim() || '~/pa'}</span>
+              <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setMode('kitt')}><X />Normal cruise</Button>
             </div>
           )}
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
@@ -138,24 +169,22 @@ export function Console() {
             <div ref={endRef} />
           </div>
           <form onSubmit={(event) => { event.preventDefault(); send(input) }} className="flex gap-2 border-t border-border bg-background/60 p-3">
-            <textarea ref={inputRef} rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(input) } }} placeholder={targetOffline ? 'Session offline' : 'Awaiting command…'} disabled={targetOffline} className="min-h-10 flex-1 resize-none border border-input bg-background px-3 py-2 text-sm outline-none placeholder:uppercase placeholder:text-muted-foreground focus:border-primary disabled:opacity-50" />
-            {busy && target === KITT
+            <textarea ref={inputRef} rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(input) } }} placeholder={placeholder} disabled={targetOffline} className="min-h-10 flex-1 resize-none border border-input bg-background px-3 py-2 text-sm outline-none placeholder:uppercase placeholder:text-muted-foreground focus:border-primary disabled:opacity-50" />
+            {busy && mode === 'kitt'
               ? <Button type="button" size="icon" variant="outline" onClick={actions.interrupt} aria-label="Interrupt"><Square /></Button>
-              : <Button type="submit" size="icon" disabled={busy || targetOffline || !input.trim()} aria-label="Send command"><Send /></Button>}
+              : <Button type="submit" size="icon" disabled={(mode !== 'task' && busy) || targetOffline || !input.trim()} aria-label={mode === 'task' ? 'Dispatch task' : 'Send command'}>{mode === 'task' ? <Play /> : <Send />}</Button>}
           </form>
         </main>
 
         <aside className="space-y-4 xl:min-h-0 xl:overflow-y-auto">
           <section className="border border-border bg-card/75 p-3 panel-cut">
-            <PanelTitle icon={Radio} status={listening ? 'Listening' : 'Online'}>Comms control</PanelTitle>
-            <div className="mb-3"><VoiceBox getLevel={getLevel} /></div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant={listening ? 'default' : 'outline'} onClick={toggleMic}>{listening ? <MicOff /> : <Mic />}{listening ? 'Stop' : 'Talk'}</Button>
-              <Button variant="outline" onClick={() => { setVoiceOn(!voiceOn); window.speechSynthesis?.cancel() }}>{voiceOn ? <Volume2 /> : <VolumeX />}Voice</Button>
-            </div>
-            <Button variant="ghost" size="sm" className="mt-2 w-full text-muted-foreground" disabled={target !== KITT} onClick={() => { window.speechSynthesis?.cancel(); actions.clearChat() }}><Trash2 />Clear conversation</Button>
+            <PanelTitle icon={Radio} status={listening ? 'Listening' : mode === 'kitt' ? 'Normal cruise' : mode === 'task' ? 'Auto cruise' : 'Pursuit'}
+              action={<Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" title="Clear KITT conversation" aria-label="Clear KITT conversation" onClick={() => { window.speechSynthesis?.cancel(); actions.clearChat() }}><Trash2 /></Button>}>
+              Comms control
+            </PanelTitle>
+            <VoiceModule lamps={lamps} onLamp={onLamp} mode={mode} onMode={setMode} getLevel={getLevel} />
           </section>
-          <TaskPanel />
+          <TaskPanel cwd={taskCwd} onCwd={setTaskCwd} />
         </aside>
       </div>
 
@@ -213,11 +242,11 @@ function SignalField({ registry, target, onSelect }: { registry: SessionEntry[];
   )
 }
 
-function PanelTitle({ icon: Icon, children, status }: { icon: typeof Activity; children: string; status?: string }) {
+function PanelTitle({ icon: Icon, children, status, action }: { icon: typeof Activity; children: string; status?: string; action?: ReactNode }) {
   return (
     <div className="mb-3 flex items-center justify-between border-b border-border pb-2">
       <h2 className="flex items-center gap-2 font-display text-base uppercase text-primary"><Icon className="h-3.5 w-3.5" />{children}</h2>
-      {status && <span className="font-mono text-[9px] uppercase text-green">{status}</span>}
+      <span className="flex items-center gap-2">{status && <span className="font-mono text-[9px] uppercase text-green">{status}</span>}{action}</span>
     </div>
   )
 }
@@ -307,10 +336,9 @@ const TASK_DOT: Record<Task['status'], string> = {
   queued: 'bg-muted-foreground/60', running: 'animate-pulse bg-amber shadow-amber', done: 'bg-green shadow-green', error: 'bg-destructive', cancelled: 'bg-muted-foreground/40', interrupted: 'bg-destructive/60',
 }
 
-function TaskPanel() {
+function TaskPanel({ cwd, onCwd }: { cwd: string; onCwd: (v: string) => void }) {
   const { state, actions } = useHub()
   const [prompt, setPrompt] = useState('')
-  const [cwd, setCwd] = useState('')
   const [open, setOpen] = useState<string | null>(null)
   const running = state.tasks.filter((t) => t.status === 'running').length
   const run = () => {
@@ -323,7 +351,7 @@ function TaskPanel() {
     <section className="flex min-h-[390px] flex-col border border-border bg-card/75 p-3 panel-cut">
       <PanelTitle icon={Bot} status={`${running} running`}>Task queue</PanelTitle>
       <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={2} placeholder="Assign a background operation…" className="w-full resize-none border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
-      <input value={cwd} onChange={(event) => setCwd(event.target.value)} placeholder="Working directory (default ~/pa)" className="mt-2 w-full border border-input bg-background px-3 py-1.5 font-mono text-xs outline-none focus:border-primary" />
+      <input value={cwd} onChange={(event) => onCwd(event.target.value)} placeholder="Working directory (default ~/pa)" className="mt-2 w-full border border-input bg-background px-3 py-1.5 font-mono text-xs outline-none focus:border-primary" />
       <Button onClick={run} disabled={!prompt.trim()} className="mt-2 w-full"><Play />Dispatch agent</Button>
       <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
         {state.tasks.length === 0 && <div className="py-8 text-center text-xs text-muted-foreground">Queue clear. Agents standing by.</div>}
