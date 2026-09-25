@@ -69,7 +69,7 @@ export function createHub(deps: HubDeps): { port: number; stop(): void } {
         deps.kitt.clear()
         return
       case 'chat.interrupt':
-        void deps.kitt.interrupt()
+        deps.kitt.interrupt().catch((err) => console.error('interrupt failed:', err))
         return
       case 'task.create':
         try { deps.tasks.create(f.prompt, f.cwd) } catch (e) {
@@ -94,6 +94,7 @@ export function createHub(deps: HubDeps): { port: number; stop(): void } {
       const url = new URL(req.url)
       if (url.pathname === '/healthz') return new Response('ok')
       if (url.pathname === '/ws') {
+        if (!originAllowed(req)) return new Response('cross-origin websocket refused', { status: 403 })
         return srv.upgrade(req, { data: { kind: 'browser' } }) ? undefined : new Response('upgrade failed', { status: 400 })
       }
       if (url.pathname === '/spoke') {
@@ -121,6 +122,14 @@ export function createHub(deps: HubDeps): { port: number; stop(): void } {
   })
 
   return { port: server.port ?? deps.port, stop: () => server.stop(true) }
+}
+
+// Browsers send Origin on WebSocket upgrades; a page from any other site must not be able to
+// drive a bypassPermissions session. Non-browser clients (no Origin) are the LAN trust boundary.
+function originAllowed(req: Request): boolean {
+  const origin = req.headers.get('origin')
+  if (!origin) return true
+  try { return new URL(origin).host === req.headers.get('host') } catch { return false }
 }
 
 async function serveStatic(dir: string, pathname: string): Promise<Response> {

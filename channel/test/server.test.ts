@@ -51,6 +51,7 @@ test('spoke registers with the hub, relays deliveries as channel notifications, 
     env: {
       ...process.env as Record<string, string>,
       KITT_HUB_URL: `ws://127.0.0.1:${hub.port}/spoke`,
+      KITT_CHANNEL: '1',
       CLAUDE_CODE_SESSION_ID: 'sess-test',
       CLAUDE_PROJECT_DIR: '/home/brady/ws/demo',
       CLAUDE_PID: '4242',
@@ -92,6 +93,20 @@ test('a spoke spawned by an SDK-driven session exposes no tools and never regist
       CLAUDE_PID: '1',
     },
   })
+  cleanups.push(() => client.close())
+  await client.connect(transport)
+  expect((await client.listTools()).tools).toEqual([])
+  await new Promise((r) => setTimeout(r, 800))
+  expect(hub.received).toEqual([])
+  expect(hub.sockets).toHaveLength(0)
+})
+
+test('a spoke in a plain interactive session (no KITT_CHANNEL) exposes no tools and never registers', async () => {
+  const hub = fakeHub()
+  const client = new Client({ name: 'test', version: '0.0.0' }, { capabilities: {} })
+  const env: Record<string, string> = { ...process.env as Record<string, string>, KITT_HUB_URL: `ws://127.0.0.1:${hub.port}/spoke`, CLAUDE_CODE_SESSION_ID: 'sess-plain', CLAUDE_CODE_ENTRYPOINT: 'cli', CLAUDE_PROJECT_DIR: '/home/brady/ws/go', CLAUDE_PID: '2' }
+  delete env['KITT_CHANNEL']
+  const transport = new StdioClientTransport({ command: 'bun', args: ['run', join(import.meta.dir, '..', 'server.ts')], env })
   cleanups.push(() => client.close())
   await client.connect(transport)
   expect((await client.listTools()).tools).toEqual([])

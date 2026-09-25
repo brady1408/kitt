@@ -111,3 +111,13 @@ test('task.create with a cwd outside home is refused', async () => {
   const err = await b.waitFor((f) => f.type === 'error')
   expect(err.code).toBe('bad_cwd')
 })
+
+test('browser upgrades from a foreign origin are refused; same-host and absent origins pass', async () => {
+  const { hub } = boot()
+  const base = `http://127.0.0.1:${hub.port}`
+  const upgrade = (origin?: string) => fetch(`${base}/ws`, { headers: { Connection: 'Upgrade', Upgrade: 'websocket', 'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==', ...(origin ? { Origin: origin } : {}) } })
+  expect((await upgrade('http://evil.example')).status).toBe(403)
+  const b = await open(hub.port, '/ws')
+  await b.waitFor((f) => f.type === 'snapshot')
+  expect(b.ws.readyState).toBe(WebSocket.OPEN)
+})

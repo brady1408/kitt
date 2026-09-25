@@ -17,7 +17,9 @@ Dev loop for the UI: `bun run hub` in one terminal, `bun run web:dev` in another
 ## Attach a terminal session
 
     claude mcp add --scope user kitt -- bun run ~/ws/kitt/channel/server.ts   # once
-    ck                                                                       # = claude --dangerously-load-development-channels server:kitt
+    ck                       # = KITT_CHANNEL=1 claude --dangerously-load-development-channels server:kitt
+
+Plain `claude` sessions also spawn the spoke (it is a user-scope MCP server) but it stays inert there: no tools, no registration.
 
 ## Service
 

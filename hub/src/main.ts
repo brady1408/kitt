@@ -24,6 +24,7 @@ const bus = createBus()
 const store = new Store(join(DATA_DIR, 'kitt.db'))
 const registry = new Registry()
 registry.onChange((entry) => bus.emit({ type: 'registry.update', entry }))
+registry.onRemove((id) => bus.emit({ type: 'registry.remove', id }))
 
 const tasks = new TaskManager({
   factory: sdkRunner, store, registry, emit: bus.emit, defaultCwd: PA_DIR, homeDir: HOME, taskPrompt: TASK_PROMPT,

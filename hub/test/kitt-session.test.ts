@@ -125,3 +125,9 @@ test('clear tells browsers to drop the KITT history before announcing the fresh 
   expect(s.frames[cleared]).toEqual({ type: 'chat.cleared', target: 'kitt' })
   expect(types.indexOf('chat.system')).toBeGreaterThan(cleared)
 })
+
+test('interrupt swallows a rejecting runner instead of crashing the hub', async () => {
+  const s = setup()
+  s.runners[0]!.interrupt = async () => { throw new Error('transport closed') }
+  await expect(s.kitt.interrupt()).resolves.toBeUndefined()
+})

@@ -47,14 +47,19 @@ export class TaskManager {
 
   cancel(id: string): void {
     const runner = this.running.get(id)
-    if (!runner) return
-    this.cancelling.add(id)
-    runner.close()
+    if (runner) {
+      this.cancelling.add(id)
+      runner.close()
+      return
+    }
+    const queued = this.list().find((t) => t.id === id && t.status === 'queued')
+    if (queued) this.save({ ...queued, status: 'cancelled', finishedAt: Date.now() })
   }
 
   delete(id: string): void {
     if (this.running.has(id)) throw new Error('task_running')
     this.deps.store.deleteTask(id)
+    this.deps.emit({ type: 'task.deleted', id })
   }
 
   private resolveCwd(cwd?: string): string {
@@ -102,6 +107,7 @@ export class TaskManager {
     let current: Task = { ...task, status: 'running' }
     this.save(current)
     void (async () => {
+      try {
       for await (const ev of runner.events) {
         if (ev.type === 'delta') {
           current = { ...current, output: current.output + ev.text }
@@ -121,11 +127,15 @@ export class TaskManager {
           current = this.finalizeIfRunning(task.id, current, ev.error)
         }
       }
-      current = this.finalizeIfRunning(task.id, current)
-      this.running.delete(task.id)
-      this.cancelling.delete(task.id)
-      this.deps.registry.remove(task.id)
-      this.pump()
+      } catch (err) {
+        console.error(`task ${task.id} loop failed:`, err)
+      } finally {
+        try { current = this.finalizeIfRunning(task.id, current) } catch (err) { console.error(`task ${task.id} finalize failed:`, err) }
+        this.running.delete(task.id)
+        this.cancelling.delete(task.id)
+        this.deps.registry.remove(task.id)
+        this.pump()
+      }
     })()
   }
 }

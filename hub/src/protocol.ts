@@ -67,6 +67,7 @@ export type ClientFrame = z.infer<typeof ClientFrame>
 export const ServerFrame = z.discriminatedUnion('type', [
   z.object({ type: z.literal('snapshot'), registry: z.array(SessionEntry), messages: z.array(ChatMessage), tasks: z.array(Task), usage: Usage }),
   z.object({ type: z.literal('registry.update'), entry: SessionEntry }),
+  z.object({ type: z.literal('registry.remove'), id: z.string() }),
   z.object({ type: z.literal('chat.user'), message: ChatMessage }),
   z.object({ type: z.literal('chat.delta'), target: z.string(), turnId: z.string(), text: z.string() }),
   z.object({ type: z.literal('chat.tool'), target: z.string(), turnId: z.string(), name: z.string(), summary: z.string() }),
@@ -74,6 +75,7 @@ export const ServerFrame = z.discriminatedUnion('type', [
   z.object({ type: z.literal('chat.system'), target: z.string(), text: z.string() }),
   z.object({ type: z.literal('chat.cleared'), target: z.string() }),
   z.object({ type: z.literal('task.update'), task: Task }),
+  z.object({ type: z.literal('task.deleted'), id: z.string() }),
   z.object({ type: z.literal('usage.update'), usage: Usage }),
   z.object({ type: z.literal('error'), code: z.string(), text: z.string(), ref: z.string().optional() }),
 ])

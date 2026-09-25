@@ -25,3 +25,13 @@ test('upsert, patch, list order, remove, change events', () => {
   r.patch('spoke:a', { status: 'idle' })
   expect(seen).toEqual(['spoke:b:idle', 'task-1:idle', 'kitt:idle', 'spoke:a:idle', 'spoke:a:working'])
 })
+
+test('remove notifies removal listeners with the id', () => {
+  const r = new Registry()
+  const removed: string[] = []
+  r.onRemove((id) => removed.push(id))
+  r.upsert(entry({ id: 'task-9', kind: 'task', name: 't' }))
+  r.remove('task-9')
+  r.remove('never-existed')
+  expect(removed).toEqual(['task-9'])
+})

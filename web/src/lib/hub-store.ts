@@ -43,6 +43,8 @@ export function reduce(state: HubState, action: HubAction): HubState {
       const rest = state.registry.filter((e) => e.id !== f.entry.id)
       return { ...state, registry: sortRegistry([...rest, f.entry]) }
     }
+    case 'registry.remove':
+      return { ...state, registry: state.registry.filter((e) => e.id !== f.id) }
     case 'chat.user':
       return append(state, f.message.target, f.message)
     case 'chat.delta': {
@@ -75,6 +77,8 @@ export function reduce(state: HubState, action: HubAction): HubState {
       const rest = state.tasks.filter((t) => t.id !== f.task.id)
       return { ...state, tasks: [...rest, f.task].sort((a, b) => b.createdAt - a.createdAt) }
     }
+    case 'task.deleted':
+      return { ...state, tasks: state.tasks.filter((t) => t.id !== f.id) }
     case 'usage.update':
       return { ...state, usage: f.usage }
     case 'error':

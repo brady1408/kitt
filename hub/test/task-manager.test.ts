@@ -99,3 +99,22 @@ test('markInterruptedOnStartup flips running and queued tasks', () => {
   s.tasks.markInterruptedOnStartup()
   expect(Object.fromEntries(s.tasks.list().map((t) => [t.id, t.status]))).toEqual({ r: 'interrupted', q: 'interrupted', d: 'done' })
 })
+
+test('delete announces the removal to browsers', async () => {
+  const s = setup()
+  const t = s.tasks.create('x')
+  s.runners[0]!.emit({ type: 'result', ok: true, text: 'r', usage, costUsd: 0 }); s.runners[0]!.end(); await tick()
+  s.tasks.delete(t.id)
+  expect(s.frames.at(-1)).toEqual({ type: 'task.deleted', id: t.id })
+})
+
+test('cancel on a queued task marks it cancelled without ever starting it', () => {
+  const s = setup(1)
+  s.tasks.create('one'); const two = s.tasks.create('two')
+  s.tasks.cancel(two.id)
+  const t = s.tasks.list().find((x) => x.id === two.id)!
+  expect(t.status).toBe('cancelled')
+  expect(t.finishedAt).not.toBeNull()
+  expect(s.runners).toHaveLength(1)
+  expect(s.frames.at(-1)).toMatchObject({ type: 'task.update', task: { id: two.id, status: 'cancelled' } })
+})

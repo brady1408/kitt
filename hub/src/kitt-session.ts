@@ -63,7 +63,9 @@ export class KittSession {
   }
 
   async interrupt(): Promise<void> {
-    await this.runner?.interrupt()
+    try { await this.runner?.interrupt() } catch (err) {
+      console.error('kitt interrupt failed:', err)
+    }
   }
 
   usage(): Usage {
@@ -105,6 +107,15 @@ export class KittSession {
   }
 
   private async consume(runner: AgentRunner): Promise<void> {
+    try {
+      await this.consumeEvents(runner)
+    } catch (err) {
+      console.error('kitt session loop failed:', err)
+      if (runner === this.runner) this.handleExit(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  private async consumeEvents(runner: AgentRunner): Promise<void> {
     for await (const ev of runner.events) {
       if (runner !== this.runner) return
       switch (ev.type) {

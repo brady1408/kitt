@@ -22,6 +22,10 @@ const log = (s: string) => process.stderr.write(`kitt channel: ${s}\n`)
 // Claude Code spawns user-scope MCP servers inside the hub's own SDK sessions too. Channel
 // pushes never reach those, so the spoke stays inert there: no tools, no hub registration.
 const SDK_SESSION = /^sdk-/.test(process.env['CLAUDE_CODE_ENTRYPOINT'] ?? '') || Boolean(process.env['CLAUDE_AGENT_SDK_VERSION'])
+// A user-scope MCP server is also spawned in every plain interactive session, where Claude Code
+// never delivers channel pushes. Only sessions launched through `ck` (which exports KITT_CHANNEL=1)
+// get the reply tool and a hub registration.
+const ACTIVE = process.env['KITT_CHANNEL'] === '1' && !SDK_SESSION
 
 let ws: WebSocket | null = null
 let backoff = 500
@@ -31,7 +35,7 @@ const mcp = new Server(
   { name: 'kitt', version: '0.1.0' },
   {
     capabilities: { tools: {}, experimental: { 'claude/channel': {} } },
-    instructions: SDK_SESSION
+    instructions: !ACTIVE
       ? 'The KITT channel is inactive in this session and exposes no tools. Answer normally.'
       : [
         'Messages from the KITT console arrive as <channel source="kitt" chat_id="kitt" message_id="...">.',
@@ -43,7 +47,7 @@ const mcp = new Server(
 )
 
 mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: SDK_SESSION ? [] : [{
+  tools: ACTIVE ? [{
     name: 'reply',
     description: 'Send a message to the KITT console.',
     inputSchema: {
@@ -51,7 +55,7 @@ mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
       properties: { text: { type: 'string' }, reply_to: { type: 'string' } },
       required: ['text'],
     },
-  }],
+  }] : [],
 }))
 
 mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
@@ -94,9 +98,9 @@ function connect(): void {
 }
 
 await mcp.connect(new StdioServerTransport())
-if (SDK_SESSION) {
-  log('spawned by an SDK-driven session; channel pushes cannot reach it, so not registering with the hub')
-} else {
+if (ACTIVE) {
   connect()
+} else {
+  log(SDK_SESSION ? 'SDK-driven session: channel inactive' : 'KITT_CHANNEL not set (launch with ck): channel inactive')
 }
 process.stdin.on('end', () => process.exit(0))

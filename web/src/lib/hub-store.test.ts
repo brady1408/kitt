@@ -69,3 +69,14 @@ test('chat.cleared drops that target\'s messages and live turn only', () => {
   expect(s.live['kitt']).toBeNull()
   expect(s.messages['spoke:1']?.map((m) => m.text)).toEqual(['yo'])
 })
+
+test('task.deleted and registry.remove drop their rows', () => {
+  const base = { prompt: 'p', cwd: '/x', output: '', finishedAt: null, usageIn: 0, usageOut: 0, costUsd: 0 }
+  let s = apply(initialState,
+    { type: 'task.update', task: { ...base, id: 'a', status: 'done', createdAt: 1 } },
+    { type: 'registry.update', entry: { id: 'task-a', kind: 'task', name: 'a', cwd: '/a', status: 'working', lastActivity: 1 } },
+    { type: 'registry.update', entry: { id: 'kitt', kind: 'kitt', name: 'K', cwd: '/pa', status: 'idle', lastActivity: 1 } })
+  s = apply(s, { type: 'task.deleted', id: 'a' }, { type: 'registry.remove', id: 'task-a' })
+  expect(s.tasks).toEqual([])
+  expect(s.registry.map((e) => e.id)).toEqual(['kitt'])
+})
