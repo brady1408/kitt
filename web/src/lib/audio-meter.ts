@@ -1,3 +1,4 @@
+import { pickVoice } from "./voice";
 /**
  * Global audio meter. Any audio the app outputs (speech, <audio>/<video> elements)
  * or captures (mic) feeds a level (0..1) that the voice box renders.
@@ -85,15 +86,34 @@ export function watchMediaElements() {
   return () => mo.disconnect();
 }
 
+const VOICE_KEY = "kitt.voice";
+
+export function listVoices(): SpeechSynthesisVoice[] {
+  if (!("speechSynthesis" in window)) return [];
+  return speechSynthesis.getVoices().filter((v) => /^en/i.test(v.lang));
+}
+
+export function getVoiceName(): string | null {
+  try { return localStorage.getItem(VOICE_KEY); } catch { return null; }
+}
+
+export function setVoiceName(name: string | null) {
+  try { name ? localStorage.setItem(VOICE_KEY, name) : localStorage.removeItem(VOICE_KEY); } catch { /* storage unavailable */ }
+}
+
+export function currentVoice(): SpeechSynthesisVoice | null {
+  return pickVoice(listVoices(), getVoiceName());
+}
+
 export function speak(text: string, { queue = false }: { queue?: boolean } = {}) {
   if (!("speechSynthesis" in window)) return;
   const clean = text.replace(/[*#`_>\[\]()]/g, "").trim();
   if (!clean) return;
   const u = new SpeechSynthesisUtterance(clean);
-  const voices = speechSynthesis.getVoices();
-  u.voice = voices.find((v) => /en-GB/i.test(v.lang) && /male|daniel|george|arthur/i.test(v.name)) ?? voices.find((v) => /en-GB/i.test(v.lang)) ?? null;
-  u.rate = 1.02;
-  u.pitch = 0.9;
+  u.voice = currentVoice();
+  // Measured and unhurried: KITT never sounds rushed.
+  u.rate = 0.95;
+  u.pitch = 0.85;
   u.onstart = () => setSpeaking(true);
   u.onend = u.onerror = () => setSpeaking(false);
   if (!queue) speechSynthesis.cancel();

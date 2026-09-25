@@ -121,7 +121,7 @@ export const sdkRunner: RunnerFactory = (opts) => {
       allowDangerouslySkipPermissions: true,
       includePartialMessages: true,
       abortController,
-      systemPrompt: { type: 'preset', preset: 'claude_code', append: opts.appendSystemPrompt },
+      systemPrompt: { type: 'preset', preset: 'claude_code', append: opts.appendSystemPrompt, snapshot: false },
       ...(opts.resume ? { resume: opts.resume } : {}),
       ...(opts.sessionId ? { sessionId: opts.sessionId } : {}),
     },

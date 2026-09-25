@@ -5,7 +5,7 @@ import type { ChatMessage, PlanWindow, SessionEntry, Task } from '@kitt/hub/prot
 import { Button } from '@/components/ui/button'
 import { FrontScanner } from '@/components/VoiceBox'
 import { ActivityBar } from '@/components/ActivityBar'
-import { getLevel, resumeAudio, speak, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
+import { getLevel, getVoiceName, listVoices, resumeAudio, setVoiceName, speak, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
 import { useHub } from '@/lib/hub-context'
 import { radarLayout } from '@/lib/radar'
 import { deriveLamps, type Lamp } from '@/lib/lamps'
@@ -193,6 +193,7 @@ export function Console() {
               Comms control
             </PanelTitle>
             <VoiceModule lamps={lamps} onLamp={onLamp} mode={mode} onMode={setMode} getLevel={getLevel} />
+            <VoicePicker />
           </section>
           <TaskPanel cwd={taskCwd} onCwd={setTaskCwd} defaultDir={defaultDir} />
         </aside>
@@ -275,6 +276,38 @@ function SignalField({ registry, activity, target, onSelect }: { registry: Sessi
         })}
       </ul>
     </section>
+  )
+}
+
+function VoicePicker() {
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => listVoices())
+  const [chosen, setChosen] = useState<string>(() => getVoiceName() ?? '')
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return
+    const refresh = () => setVoices(listVoices())
+    refresh()
+    speechSynthesis.addEventListener('voiceschanged', refresh)
+    return () => speechSynthesis.removeEventListener('voiceschanged', refresh)
+  }, [])
+  if (voices.length === 0) return null
+  return (
+    <label className="mt-2 flex items-center gap-2 font-mono text-[9px] uppercase text-muted-foreground">
+      <span className="shrink-0">Voice</span>
+      <select
+        value={chosen}
+        onChange={(event) => {
+          const name = event.target.value
+          setChosen(name)
+          setVoiceName(name || null)
+          resumeAudio()
+          speak('Voice matrix online. This is the voice you have selected.')
+        }}
+        className="min-w-0 flex-1 truncate border border-input bg-background px-2 py-1 text-[10px] normal-case text-foreground outline-none focus:border-primary"
+      >
+        <option value="">Automatic</option>
+        {voices.map((v) => <option key={v.name} value={v.name}>{v.name.replace(/^Microsoft |^Google /, '')}</option>)}
+      </select>
+    </label>
   )
 }
 
