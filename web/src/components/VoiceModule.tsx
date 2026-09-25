@@ -56,7 +56,7 @@ export function VoiceModule({ lamps, onLamp, mode, onMode, getLevel }: {
         <div className="flex flex-col gap-1" role="radiogroup" aria-label="Send mode">
           {MODES.map((m) => (
             <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} onClick={() => onMode(m.id)}
-              className={`h-9 rounded-[3px] text-[10px] font-bold uppercase leading-tight tracking-wide transition-colors ${mode === m.id ? m.active : m.off}`}>
+              className={`h-9 cursor-pointer rounded-[3px] text-[10px] font-bold uppercase leading-tight tracking-wide transition-colors hover:brightness-125 ${mode === m.id ? m.active : m.off}`}>
               {m.lines[0]}{m.lines[1] && <><br />{m.lines[1]}</>}
             </button>
           ))}
