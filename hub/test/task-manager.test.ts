@@ -137,3 +137,14 @@ test('task output separates text blocks with a paragraph break', async () => {
   r.emit({ type: 'block' }); r.emit({ type: 'delta', text: 'Second.' }); await tick()
   expect(s.tasks.list()[0]?.output).toBe('First.\n\nSecond.')
 })
+
+test('a default working directory outside home is allowed, and its subdirectories too', () => {
+  const outside = mkdtempSync(join(tmpdir(), 'kitt-outside-'))
+  mkdirSync(join(outside, 'sub'))
+  const s = setup()
+  const tasks = new TaskManager({ factory: fakeFactory().factory, store: new Store(':memory:'), registry: new Registry(), planUsage: s.planUsage, system: new SystemMonitor(), emit: () => {}, defaultCwd: outside, homeDir: s.home, taskPrompt: 't' })
+  expect(tasks.create('a').cwd).toBe(outside)
+  expect(tasks.create('b', join(outside, 'sub')).cwd).toBe(join(outside, 'sub'))
+  expect(tasks.create('c', '~/proj').cwd).toBe(join(s.home, 'proj'))
+  expect(() => tasks.create('d', join(outside, '..'))).toThrow('bad_cwd')
+})

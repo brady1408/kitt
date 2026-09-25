@@ -71,7 +71,8 @@ export class TaskManager {
     const trimmed = cwd?.trim() ?? ''
     const raw = trimmed ? trimmed.replace(/^~(?=$|\/)/, home) : this.deps.defaultCwd
     const dir = resolve(raw)
-    if (dir !== home && !dir.startsWith(home + sep)) throw new Error('bad_cwd')
+    const roots = [home, resolve(this.deps.defaultCwd)]
+    if (!roots.some((root) => dir === root || dir.startsWith(root + sep))) throw new Error('bad_cwd')
     if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error('bad_cwd')
     return dir
   }
