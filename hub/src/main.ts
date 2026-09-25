@@ -19,6 +19,7 @@ const HOST = process.env['KITT_HOST'] ?? '0.0.0.0'
 const DATA_DIR = process.env['KITT_DATA_DIR'] ?? join(HOME, '.local', 'share', 'kitt')
 const WORKDIR = process.env['KITT_WORKDIR'] ?? HOME
 const OPERATOR = process.env['KITT_OPERATOR'] ?? userInfo().username
+const TTS_URL = process.env['KITT_TTS_URL'] ?? 'http://127.0.0.1:7333'
 const STATIC_DIR = resolve(import.meta.dir, '..', '..', 'web', 'dist')
 
 mkdirSync(DATA_DIR, { recursive: true })
@@ -43,5 +44,5 @@ kitt.start()
 const spokes = new Spokes({ registry, store, emit: bus.emit })
 setInterval(() => spokes.sweep(), 15_000)
 
-const hub = createHub({ bus, store, registry, kitt, tasks, spokes, system, config: { workdir: WORKDIR }, port: PORT, hostname: HOST, staticDir: STATIC_DIR })
+const hub = createHub({ bus, store, registry, kitt, tasks, spokes, system, config: { workdir: WORKDIR }, ttsUrl: TTS_URL, port: PORT, hostname: HOST, staticDir: STATIC_DIR })
 console.log(`kitt hub listening on http://${HOST}:${hub.port} (data: ${DATA_DIR}, workdir: ${WORKDIR}, operator: ${OPERATOR})`)

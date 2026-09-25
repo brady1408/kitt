@@ -1,0 +1,14 @@
+[Unit]
+Description=KITT text-to-speech sidecar (Kokoro)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/ws/kitt/tts
+ExecStart=%h/ws/kitt/tts/.venv/bin/python server.py
+# Optional: Environment=KITT_TTS_VOICE=am_michael KITT_TTS_PORT=7333
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

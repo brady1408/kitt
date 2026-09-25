@@ -5,7 +5,8 @@ import type { ChatMessage, PlanWindow, SessionEntry, Task } from '@kitt/hub/prot
 import { Button } from '@/components/ui/button'
 import { FrontScanner } from '@/components/VoiceBox'
 import { ActivityBar } from '@/components/ActivityBar'
-import { getLevel, getVoiceName, listVoices, resumeAudio, setVoiceName, speak, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
+import { getLevel, getVoiceName, listVoices, resumeAudio, setVoiceName, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
+import { getServerVoices, kittVoice, loadServerVoices, onServerVoices } from '@/lib/kitt-voice'
 import { useHub } from '@/lib/hub-context'
 import { radarLayout } from '@/lib/radar'
 import { deriveLamps, type Lamp } from '@/lib/lamps'
@@ -52,9 +53,10 @@ export function Console() {
   })
 
   useEffect(() => watchMediaElements(), [])
+  useEffect(() => { void loadServerVoices() }, [])
   useEffect(() => {
     const narrator = createNarrator({
-      speak: (text) => speak(text, { queue: true }),
+      speak: (text) => kittVoice.speak(text),
       enabled: () => voiceRef.current,
       target: () => targetRef.current,
     })
@@ -79,12 +81,12 @@ export function Console() {
     if (mode === 'task') { actions.createTask(value, taskCwd.trim() || undefined); setInput(''); return }
     if (busy || targetOffline) return
     resumeAudio()
-    window.speechSynthesis?.cancel()
+    kittVoice.cancel()
     actions.sendChat(target, value)
     setInput('')
   }
   const onLamp = (id: Lamp['id']) => {
-    if (id === 'voice') { setVoiceOn((v) => !v); window.speechSynthesis?.cancel() }
+    if (id === 'voice') { setVoiceOn((v) => !v); kittVoice.cancel() }
     if (id === 'mic') void toggleMic()
   }
   const defaultDir = state.config?.workdir ?? 'the default directory'
@@ -189,7 +191,7 @@ export function Console() {
         <aside className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:overflow-y-auto">
           <section className="border border-border bg-card/75 p-3 panel-cut">
             <PanelTitle icon={Radio} status={listening ? 'Listening' : mode === 'kitt' ? 'Normal cruise' : mode === 'task' ? 'Auto cruise' : 'Pursuit'}
-              action={<Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" title="Clear KITT conversation" aria-label="Clear KITT conversation" onClick={() => { window.speechSynthesis?.cancel(); actions.clearChat() }}><Trash2 /></Button>}>
+              action={<Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" title="Clear KITT conversation" aria-label="Clear KITT conversation" onClick={() => { kittVoice.cancel(); actions.clearChat() }}><Trash2 /></Button>}>
               Comms control
             </PanelTitle>
             <VoiceModule lamps={lamps} onLamp={onLamp} mode={mode} onMode={setMode} getLevel={getLevel} />
@@ -281,7 +283,9 @@ function SignalField({ registry, activity, target, onSelect }: { registry: Sessi
 
 function VoicePicker() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => listVoices())
+  const [server, setServer] = useState(() => getServerVoices())
   const [chosen, setChosen] = useState<string>(() => getVoiceName() ?? '')
+  useEffect(() => onServerVoices(() => setServer(getServerVoices())), [])
   useEffect(() => {
     if (!('speechSynthesis' in window)) return
     const refresh = () => setVoices(listVoices())
@@ -289,7 +293,7 @@ function VoicePicker() {
     speechSynthesis.addEventListener('voiceschanged', refresh)
     return () => speechSynthesis.removeEventListener('voiceschanged', refresh)
   }, [])
-  if (voices.length === 0) return null
+  if (voices.length === 0 && !server) return null
   return (
     <label className="mt-2 flex items-center gap-2 font-mono text-[9px] uppercase text-muted-foreground">
       <span className="shrink-0">Voice</span>
@@ -300,12 +304,14 @@ function VoicePicker() {
           setChosen(name)
           setVoiceName(name || null)
           resumeAudio()
-          speak('Voice matrix online. This is the voice you have selected.')
+          kittVoice.cancel()
+          kittVoice.speak('Voice matrix online. This is the voice you have selected.')
         }}
         className="min-w-0 flex-1 truncate border border-input bg-background px-2 py-1 text-[10px] normal-case text-foreground outline-none focus:border-primary"
       >
-        <option value="">Automatic</option>
-        {voices.map((v) => <option key={v.name} value={v.name}>{v.name.replace(/^Microsoft |^Google /, '')}</option>)}
+        <option value="">{server ? `Automatic (KITT · ${server.default})` : 'Automatic (browser)'}</option>
+        {server && <optgroup label="KITT voice">{server.voices.map((v) => <option key={v} value={`server:${v}`}>{v}</option>)}</optgroup>}
+        {voices.length > 0 && <optgroup label="Browser">{voices.map((v) => <option key={v.name} value={`browser:${v.name}`}>{v.name.replace(/^Microsoft |^Google /, '')}</option>)}</optgroup>}
       </select>
     </label>
   )
@@ -439,7 +445,7 @@ function TaskPanel({ cwd, onCwd, defaultDir }: { cwd: string; onCwd: (v: string)
               <div className="prose prose-invert max-w-none border-t border-border p-3 text-xs">
                 <p className="font-mono text-[10px] uppercase text-muted-foreground">{task.status} · {task.cwd}</p>
                 <Markdown>{task.output || '_Agent working…_'}</Markdown>
-                {task.status === 'done' && <Button variant="link" size="sm" className="mt-1 px-0" onClick={() => speak(task.output)}><Volume2 />Read aloud</Button>}
+                {task.status === 'done' && <Button variant="link" size="sm" className="mt-1 px-0" onClick={() => { resumeAudio(); kittVoice.cancel(); kittVoice.speak(task.output) }}><Volume2 />Read aloud</Button>}
               </div>
             )}
           </div>

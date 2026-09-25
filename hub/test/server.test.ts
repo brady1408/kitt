@@ -16,7 +16,7 @@ import { SystemMonitor } from '../src/system-monitor'
 const stops: (() => void)[] = []
 afterEach(() => { for (const s of stops.splice(0)) s() })
 
-function boot() {
+function boot(opts: { ttsUrl?: string } = {}) {
   const home = mkdtempSync(join(tmpdir(), 'kitt-home-'))
   mkdirSync(join(home, 'pa'))
   const store = new Store(':memory:')
@@ -30,7 +30,7 @@ function boot() {
   const tasks = new TaskManager({ factory, store, registry, planUsage, system, emit: bus.emit, defaultCwd: join(home, 'pa'), homeDir: home, taskPrompt: 't' })
   const spokes = new Spokes({ registry, store, emit: bus.emit })
   registry.onChange((entry) => bus.emit({ type: 'registry.update', entry }))
-  const hub = createHub({ bus, store, registry, kitt, tasks, spokes, system, config: { workdir: join(home, 'pa') }, port: 0, hostname: '127.0.0.1' })
+  const hub = createHub({ bus, store, registry, kitt, tasks, spokes, system, config: { workdir: join(home, 'pa') }, ...(opts.ttsUrl ? { ttsUrl: opts.ttsUrl } : {}), port: 0, hostname: '127.0.0.1' })
   stops.push(hub.stop)
   return { hub, runners, registry, home }
 }
@@ -124,4 +124,35 @@ test('browser upgrades from a foreign origin are refused; same-host and absent o
   const b = await open(hub.port, '/ws')
   await b.waitFor((f) => f.type === 'snapshot')
   expect(b.ws.readyState).toBe(WebSocket.OPEN)
+})
+
+function fakeTts() {
+  const calls: string[] = []
+  const server = Bun.serve({
+    port: 0, hostname: '127.0.0.1',
+    fetch(req) {
+      const url = new URL(req.url)
+      calls.push(url.pathname + url.search)
+      if (url.pathname === '/voices') return Response.json({ voices: ['am_michael', 'am_adam'], default: 'am_michael' })
+      if (url.pathname === '/tts') return new Response(new Uint8Array([82, 73, 70, 70]), { headers: { 'Content-Type': 'audio/wav' } })
+      return new Response('nope', { status: 404 })
+    },
+  })
+  stops.push(() => server.stop(true))
+  return { url: `http://127.0.0.1:${server.port}`, calls }
+}
+
+test('tts routes proxy to the sidecar and report 503 when it is down', async () => {
+  const tts = fakeTts()
+  const { hub } = boot({ ttsUrl: tts.url })
+  const voices = await fetch(`http://127.0.0.1:${hub.port}/tts/voices`)
+  expect(await voices.json()).toEqual({ voices: ['am_michael', 'am_adam'], default: 'am_michael' })
+  const audio = await fetch(`http://127.0.0.1:${hub.port}/tts?text=hello%20there&voice=am_adam`)
+  expect(audio.status).toBe(200)
+  expect(audio.headers.get('content-type')).toBe('audio/wav')
+  expect(new Uint8Array(await audio.arrayBuffer())).toEqual(new Uint8Array([82, 73, 70, 70]))
+  expect(tts.calls).toEqual(['/voices', '/tts?text=hello%20there&voice=am_adam'])
+  const down = boot({ ttsUrl: 'http://127.0.0.1:1' })
+  expect((await fetch(`http://127.0.0.1:${down.hub.port}/tts/voices`)).status).toBe(503)
+  expect((await fetch(`http://127.0.0.1:${down.hub.port}/tts?text=x`)).status).toBe(503)
 })

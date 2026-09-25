@@ -23,3 +23,12 @@ export function pickVoice<T extends VoiceLike>(voices: T[], remembered: string |
     null
   )
 }
+
+export type VoiceChoice = { kind: 'server' | 'browser'; name: string }
+
+/** Stored voice choice: "server:am_michael", "browser:Google US English", or empty for automatic. */
+export function parseVoiceChoice(raw: string | null): VoiceChoice | null {
+  if (!raw) return null
+  const m = /^(server|browser):(.+)$/.exec(raw)
+  return m ? { kind: m[1] as VoiceChoice['kind'], name: m[2]! } : { kind: 'browser', name: raw }
+}

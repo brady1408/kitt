@@ -1,4 +1,4 @@
-import { pickVoice } from "./voice";
+import { parseVoiceChoice, pickVoice } from "./voice";
 /**
  * Global audio meter. Any audio the app outputs (speech, <audio>/<video> elements)
  * or captures (mic) feeds a level (0..1) that the voice box renders.
@@ -102,7 +102,39 @@ export function setVoiceName(name: string | null) {
 }
 
 export function currentVoice(): SpeechSynthesisVoice | null {
-  return pickVoice(listVoices(), getVoiceName());
+  const choice = parseVoiceChoice(getVoiceName());
+  return pickVoice(listVoices(), choice?.kind === "browser" ? choice.name : null);
+}
+
+let playing: HTMLAudioElement | null = null;
+
+/** Plays a WAV blob through the meter so the voice matrix follows it. Resolves when playback ends. */
+export function playBlob(blob: Blob): Promise<void> {
+  return new Promise((resolve) => {
+    ensure();
+    const url = URL.createObjectURL(blob);
+    const el = new Audio(url);
+    el.crossOrigin = "anonymous";
+    hookMedia(el);
+    playing = el;
+    const done = () => {
+      if (playing === el) { playing = null; setSpeaking(false); }
+      URL.revokeObjectURL(url);
+      resolve();
+    };
+    el.onplay = () => setSpeaking(true);
+    el.onended = done;
+    el.onerror = done;
+    el.onpause = () => { if (el.ended === false && playing !== el) done(); };
+    el.play().catch(done);
+  });
+}
+
+export function stopPlayback() {
+  const el = playing;
+  playing = null;
+  if (el) { el.pause(); el.src = ""; }
+  setSpeaking(false);
 }
 
 export function speak(text: string, { queue = false }: { queue?: boolean } = {}) {
