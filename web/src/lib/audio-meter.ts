@@ -1,4 +1,5 @@
 import { parseVoiceChoice, pickVoice } from "./voice";
+import { bandLevels } from "./spectrum";
 /**
  * Global audio meter. Any audio the app outputs (speech, <audio>/<video> elements)
  * or captures (mic) feeds a level (0..1) that the voice box renders.
@@ -6,7 +7,8 @@ import { parseVoiceChoice, pickVoice } from "./voice";
 let ctx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 let buf: Uint8Array<ArrayBuffer> | null = null;
-let speaking = false;
+let freq: Uint8Array<ArrayBuffer> | null = null;
+let speaking = false; // browser speech synthesis in progress (cannot be tapped, so the envelope is faked)
 const hooked = new WeakSet<HTMLMediaElement>();
 
 function ensure() {
@@ -14,7 +16,9 @@ function ensure() {
   ctx = new AudioContext();
   analyser = ctx.createAnalyser();
   analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.6;
   buf = new Uint8Array(new ArrayBuffer(analyser.fftSize));
+  freq = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
 }
 
 export function resumeAudio() {
@@ -55,6 +59,23 @@ export function setSpeaking(v: boolean) {
   speaking = v;
 }
 
+function fakeEnvelope(): number {
+  const t = performance.now() / 1000;
+  const syl = Math.abs(Math.sin(t * 9)) * 0.6 + Math.abs(Math.sin(t * 23)) * 0.3;
+  return 0.25 + syl * (0.6 + Math.random() * 0.25);
+}
+
+/** Per-band levels (low, mid, high) of whatever is playing through the meter: the server voice, or the mic while listening. */
+export function getLevels(): [number, number, number] {
+  if (speaking) {
+    const e = fakeEnvelope();
+    return [Math.min(1, e * 0.8), Math.min(1, e), Math.min(1, e * 0.7)];
+  }
+  if (!analyser || !freq || !ctx) return [0, 0, 0];
+  analyser.getByteFrequencyData(freq);
+  return bandLevels(freq, ctx.sampleRate, analyser.fftSize);
+}
+
 export function getLevel(): number {
   let lvl = 0;
   if (analyser && buf) {
@@ -66,12 +87,7 @@ export function getLevel(): number {
     }
     lvl = Math.min(1, Math.sqrt(sum / buf.length) * 4);
   }
-  if (speaking) {
-    // Browser speech can't be tapped directly; synthesise a speech-like envelope.
-    const t = performance.now() / 1000;
-    const syl = Math.abs(Math.sin(t * 9)) * 0.6 + Math.abs(Math.sin(t * 23)) * 0.3;
-    lvl = Math.max(lvl, 0.25 + syl * (0.6 + Math.random() * 0.25));
-  }
+  if (speaking) lvl = Math.max(lvl, fakeEnvelope());
   return Math.min(1, lvl);
 }
 
@@ -118,11 +134,10 @@ export function playBlob(blob: Blob): Promise<void> {
     hookMedia(el);
     playing = el;
     const done = () => {
-      if (playing === el) { playing = null; setSpeaking(false); }
+      if (playing === el) playing = null;
       URL.revokeObjectURL(url);
       resolve();
     };
-    el.onplay = () => setSpeaking(true);
     el.onended = done;
     el.onerror = done;
     el.onpause = () => { if (el.ended === false && playing !== el) done(); };
@@ -134,7 +149,6 @@ export function stopPlayback() {
   const el = playing;
   playing = null;
   if (el) { el.pause(); el.src = ""; }
-  setSpeaking(false);
 }
 
 export function speak(text: string, { queue = false }: { queue?: boolean } = {}) {

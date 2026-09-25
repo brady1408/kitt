@@ -5,7 +5,7 @@ import type { ChatMessage, PlanWindow, SessionEntry, Task } from '@kitt/hub/prot
 import { Button } from '@/components/ui/button'
 import { FrontScanner } from '@/components/VoiceBox'
 import { ActivityBar } from '@/components/ActivityBar'
-import { getLevel, getVoiceName, listVoices, resumeAudio, setVoiceName, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
+import { getLevels, getVoiceName, listVoices, resumeAudio, setVoiceName, startMic, stopMic, watchMediaElements } from '@/lib/audio-meter'
 import { getServerVoices, kittVoice, loadServerVoices, onServerVoices } from '@/lib/kitt-voice'
 import { useHub } from '@/lib/hub-context'
 import { radarLayout } from '@/lib/radar'
@@ -194,7 +194,7 @@ export function Console() {
               action={<Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" title="Clear KITT conversation" aria-label="Clear KITT conversation" onClick={() => { kittVoice.cancel(); actions.clearChat() }}><Trash2 /></Button>}>
               Comms control
             </PanelTitle>
-            <VoiceModule lamps={lamps} onLamp={onLamp} mode={mode} onMode={setMode} getLevel={getLevel} />
+            <VoiceModule lamps={lamps} onLamp={onLamp} mode={mode} onMode={setMode} getLevels={getLevels} />
             <VoicePicker />
           </section>
           <TaskPanel cwd={taskCwd} onCwd={setTaskCwd} defaultDir={defaultDir} />

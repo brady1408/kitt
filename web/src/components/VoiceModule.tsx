@@ -34,19 +34,19 @@ const MODES: { id: SendMode; lines: [string, string]; active: string; off: strin
   { id: 'pursuit', lines: ['Pursuit', ''], active: 'bg-primary text-white shadow-signal', off: 'bg-primary/10 text-primary/45', gauge: 'bg-primary shadow-signal' },
 ]
 
-export function VoiceModule({ lamps, onLamp, mode, onMode, getLevel }: {
+export function VoiceModule({ lamps, onLamp, mode, onMode, getLevels }: {
   lamps: Lamp[]
   onLamp: (id: Lamp['id']) => void
   mode: SendMode
   onMode: (mode: SendMode) => void
-  getLevel: () => number
+  getLevels: () => [number, number, number]
 }) {
   const column = (side: Lamp['side']) => lamps.filter((l) => l.side === side)
   return (
     <div className="border border-border bg-background/60 p-3">
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
         <div className="flex flex-col gap-1.5">{column('left').map((l) => <LampPlate key={l.id} lamp={l} onClick={() => onLamp(l.id)} />)}</div>
-        <div className="min-w-0"><VoiceBox getLevel={getLevel} frameless /></div>
+        <div className="min-w-0"><VoiceBox getLevels={getLevels} frameless /></div>
         <div className="flex flex-col gap-1.5">{column('right').map((l) => <LampPlate key={l.id} lamp={l} onClick={() => onLamp(l.id)} />)}</div>
       </div>
       <div className="mt-3 grid grid-cols-[auto_1fr] items-stretch gap-3">

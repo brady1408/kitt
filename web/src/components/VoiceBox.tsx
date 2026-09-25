@@ -2,17 +2,22 @@ import { useEffect, useRef } from "react";
 
 const SEGMENTS = 12;
 
-export function VoiceBox({ getLevel, frameless = false }: { getLevel: () => number; frameless?: boolean }) {
+export function VoiceBox({ getLevels, frameless = false }: { getLevels: () => [number, number, number]; frameless?: boolean }) {
   const cols = useRef<(HTMLDivElement | null)[][]>([[], [], []]);
 
   useEffect(() => {
     let raf = 0;
-    let smooth = 0;
+    const smooth = [0, 0, 0];
+    // Columns are low / mid / high bands; the centre column carries the vowels, the outer ones the fundamentals and sibilance.
+    const order = [0, 1, 2];
     const tick = () => {
-      smooth += (getLevel() - smooth) * 0.3;
-      const scales = [0.74, 1, 0.74];
+      const levels = getLevels();
       cols.current.forEach((segments, column) => {
-        const lit = Math.max(1, Math.round(smooth * (scales[column] ?? 1) * (SEGMENTS / 2)));
+        const band = order[column] ?? 1;
+        const target = levels[band] ?? 0;
+        // Fast attack, slower release, like an LED meter.
+        smooth[band] = target > smooth[band]! ? smooth[band]! + (target - smooth[band]!) * 0.6 : smooth[band]! + (target - smooth[band]!) * 0.25;
+        const lit = Math.max(1, Math.round(smooth[band]! * (SEGMENTS / 2)));
         segments.forEach((element, index) => {
           if (!element) return;
           const distance = Math.abs(index - (SEGMENTS - 1) / 2);
@@ -23,7 +28,7 @@ export function VoiceBox({ getLevel, frameless = false }: { getLevel: () => numb
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [getLevel]);
+  }, [getLevels]);
 
   return (
     <div className={frameless ? "relative flex items-center justify-center py-2" : "voice-chamber relative flex min-h-56 items-center justify-center overflow-hidden border border-border bg-card/70 p-6"}>
