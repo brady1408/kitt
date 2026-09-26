@@ -1,6 +1,8 @@
 # KITT
 
-A K.I.T.T.-styled web console for [Claude Code](https://code.claude.com). It puts a persistent Claude Code session behind a dashboard on your LAN, runs background tasks as their own sessions, and lets you message the interactive `claude` terminals you already have open.
+A Knight Rider dashboard for [Claude Code](https://code.claude.com): an agent UI that puts a persistent Claude Code session behind a K.I.T.T.-styled console on your LAN, runs background tasks as their own sessions, shows the interactive `claude` terminals you already have open on a radar, and talks back in its own voice.
+
+If you're looking for a self-hosted "agentic OS" front end, a Claude Code web UI, or just a reason to say "KITT, run the tests" out loud, this is that.
 
 ![The KITT console](docs/console.png)
 
