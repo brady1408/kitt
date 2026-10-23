@@ -111,33 +111,57 @@ export function currentVoice(): SpeechSynthesisVoice | null {
   return pickVoice(listVoices(), choice?.kind === "browser" ? choice.name : null);
 }
 
-let playing: HTMLAudioElement | null = null;
+let shared: HTMLAudioElement | null = null;
+let playingUrl: string | null = null;
+// A tiny silent WAV: playing it inside a tap is what lets iOS play later replies that arrive without a gesture.
+const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
+function sharedAudio(): HTMLAudioElement {
+  if (!shared) {
+    shared = new Audio();
+    shared.crossOrigin = "anonymous";
+    shared.preload = "auto";
+    hookMedia(shared);
+  }
+  return shared;
+}
+
+/** Call from a user gesture (first tap or key) so mobile browsers allow later playback. Safe to call repeatedly. */
+export function unlockAudio() {
+  ensure();
+  void ctx!.resume();
+  const el = sharedAudio();
+  if (playingUrl) return;
+  el.src = SILENCE;
+  el.play().catch(() => { /* not a gesture; the next tap will try again */ });
+}
 
 /** Plays a WAV blob through the meter so the voice matrix follows it. Resolves when playback ends. */
 export function playBlob(blob: Blob): Promise<void> {
   return new Promise((resolve) => {
     ensure();
+    const el = sharedAudio();
     const url = URL.createObjectURL(blob);
-    const el = new Audio(url);
-    el.crossOrigin = "anonymous";
-    hookMedia(el);
-    playing = el;
+    playingUrl = url;
+    let finished = false;
     const done = () => {
-      if (playing === el) playing = null;
+      if (finished) return;
+      finished = true;
+      if (playingUrl === url) playingUrl = null;
       URL.revokeObjectURL(url);
       resolve();
     };
     el.onended = done;
     el.onerror = done;
-    el.onpause = () => { if (el.ended === false && playing !== el) done(); };
+    el.onpause = () => { if (!el.ended && playingUrl !== url) done(); };
+    el.src = url;
     el.play().catch(done);
   });
 }
 
 export function stopPlayback() {
-  const el = playing;
-  playing = null;
-  if (el) { el.pause(); el.src = ""; }
+  playingUrl = null;
+  if (shared) { shared.pause(); shared.removeAttribute("src"); shared.load(); }
 }
 
 export function speak(text: string, { queue = false }: { queue?: boolean } = {}) {

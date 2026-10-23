@@ -25,7 +25,7 @@ function LampPlate({ lamp, onClick, onPointer }: { lamp: Lamp; onClick?: () => v
       disabled={!control}
       aria-pressed={control ? lamp.lit : undefined}
       title={lamp.id === 'mic' ? 'Hold to talk, or tap to toggle. Space bar also holds to talk.' : control ? `Toggle ${lamp.label}` : `${lamp.label}${lamp.lit ? ' active' : ''}`}
-      className={`flex h-7 w-14 items-center justify-center gap-1 rounded-[3px] text-[9px] font-bold uppercase leading-none tracking-wide transition-colors ${style} ${control ? 'cursor-pointer hover:brightness-125' : 'cursor-default'}`}
+      className={`flex h-7 w-14 select-none items-center justify-center gap-1 rounded-[3px] text-[9px] font-bold uppercase leading-none tracking-wide transition-colors [touch-action:none] ${style} ${control ? 'cursor-pointer hover:brightness-125' : 'cursor-default'}`}
     >
       <span>{lamp.label}</span>
       {lamp.detail && <span className="font-mono text-[8px] opacity-80">{lamp.detail}</span>}
