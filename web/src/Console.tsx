@@ -203,6 +203,7 @@ export function Console() {
       </PanelTitle>
       <VoiceModule lamps={lamps} onLamp={onLamp} onMicPointer={onMicPointer} mode={mode} onMode={setMode} getLevel={getLevel} />
       <VoicePicker />
+      {isPhone && <HoldToTalk state={micState} onPointer={onMicPointer} large />}
     </section>
   )
 
@@ -277,21 +278,23 @@ function useIsPhone(): boolean {
   return phone
 }
 
-/** Phone-only hold-to-talk beside the input: lit while recording, dim while transcribing. */
-function HoldToTalk({ state, onPointer }: { state: MicState; onPointer: (phase: 'down' | 'up') => void }) {
+/** Phone-only hold-to-talk: a small button beside the input, or a large pad on the Comms page. Lit while recording, dim while transcribing. */
+function HoldToTalk({ state, onPointer, large = false }: { state: MicState; onPointer: (phase: 'down' | 'up') => void; large?: boolean }) {
   const look = state === 'recording' ? 'bg-amber text-black shadow-amber border-amber' : state === 'transcribing' ? 'bg-amber/30 text-amber border-amber/40' : 'border-input text-amber'
+  const label = state === 'recording' ? 'Listening… release to send' : state === 'transcribing' ? 'Transcribing…' : 'Hold to talk'
   return (
     <button
       type="button"
       aria-label={state === 'recording' ? 'Release to send' : 'Hold to talk'}
-      title="Hold to talk"
+      title="Hold to talk, or tap to toggle"
       onPointerDown={(e) => { e.preventDefault(); onPointer('down') }}
       onPointerUp={() => onPointer('up')}
       onPointerCancel={() => onPointer('up')}
       onContextMenu={(e) => e.preventDefault()}
-      className={`flex h-10 w-12 shrink-0 select-none items-center justify-center border transition-colors [touch-action:none] ${look}`}
+      className={`flex shrink-0 select-none items-center justify-center gap-2 border transition-colors [touch-action:none] ${large ? 'mt-3 h-16 w-full font-display text-base uppercase tracking-wide' : 'h-10 w-12'} ${look}`}
     >
-      <Mic className="h-4 w-4" />
+      <Mic className={large ? 'h-5 w-5' : 'h-4 w-4'} />
+      {large && <span>{label}</span>}
     </button>
   )
 }
