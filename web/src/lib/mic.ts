@@ -1,5 +1,13 @@
 export type MicState = 'idle' | 'recording' | 'transcribing'
 
+const STOP_TIMEOUT_MS = 30_000
+
+async function withTimeout(ms: number, work: () => Promise<void>): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const gaveUp = new Promise<void>((resolve) => { timer = setTimeout(resolve, ms) })
+  try { await Promise.race([work().catch(() => {}), gaveUp]) } finally { clearTimeout(timer) }
+}
+
 type Deps = {
   /** Starts capturing; resolves with the clip when stopRecording is called, or null if nothing was captured. Rejects if the mic is unavailable. */
   startRecording: () => Promise<Blob | null>
@@ -10,6 +18,8 @@ type Deps = {
   recognizer: (() => Promise<string>) | null
   onState: (state: MicState) => void
   onText: (text: string) => void
+  /** Longest a stop may take (recorder flush + transcription) before the mic is handed back. */
+  stopTimeoutMs?: number
 }
 
 /** Push-to-talk: toggle to start recording, toggle again to stop and transcribe. */
@@ -30,13 +40,15 @@ export function createMic(deps: Deps) {
       if (state === 'recording') {
         set('transcribing')
         deps.stopRecording()
-        const blob = await clip
+        const pending = clip
         clip = null
-        if (blob) {
+        await withTimeout(deps.stopTimeoutMs ?? STOP_TIMEOUT_MS, async () => {
+          const blob = await pending
+          if (!blob) return
           const text = await deps.transcribe(blob)
           if (text === null) await viaRecognizer()
           else deliver(text)
-        }
+        })
         set('idle')
         return
       }

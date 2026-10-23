@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { createMic } from './mic'
+import { createMic, type MicState } from './mic'
 
 function setup(opts: { transcript?: string | null; recognizer?: boolean } = {}) {
   const log: string[] = []
@@ -51,4 +51,21 @@ test('recording that fails to start goes straight to the recognizer if there is 
   })
   await mic.toggle(); await tick()
   expect(log).toEqual(['browser-recognizer', 'text:spoken'])
+})
+
+test('a stop whose transcription never returns gives the mic back after the timeout', async () => {
+  const states: MicState[] = []
+  const mic = createMic({
+    startRecording: () => new Promise(() => {}),
+    stopRecording: () => {},
+    transcribe: () => new Promise(() => {}),
+    recognizer: null,
+    onState: (s) => states.push(s),
+    onText: () => {},
+    stopTimeoutMs: 20,
+  })
+  await mic.toggle()
+  await mic.toggle()
+  expect(states).toEqual(['recording', 'transcribing', 'idle'])
+  expect(mic.state).toBe('idle')
 })
