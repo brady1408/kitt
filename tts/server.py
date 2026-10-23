@@ -30,11 +30,32 @@ MAX_CHARS = 4000
 MAX_AUDIO_BYTES = 25 * 1024 * 1024
 
 kokoro = Kokoro(MODEL, VOICES)
+
+# Blended voices: weighted sums of the pack's style vectors, listed ahead of the stock voices.
+# Kokoro cannot learn a voice from audio, so this is how new voices get into the picker.
+# lang picks the pronunciation (en-us / en-gb); the timbre comes from the mix.
+BLENDS: dict[str, dict] = {
+    "custom_kitt": {"mix": {"bm_daniel": 0.6, "am_michael": 0.4}, "lang": "en-us"},
+}
+_blend_cache: dict[str, "NDArray"] = {}
+
+
+def voice_style(name: str):
+    """Returns a style vector for a stock voice id or a blend name."""
+    blend = BLENDS.get(name)
+    if blend is None:
+        return kokoro.get_voice_style(name)
+    if name not in _blend_cache:
+        total = sum(blend["mix"].values())
+        _blend_cache[name] = sum(kokoro.get_voice_style(v) * (w / total) for v, w in blend["mix"].items())
+    return _blend_cache[name]
+
+
 VOICE_IDS = sorted(kokoro.get_voices())
-# English voices first, American male first among those: the KITT register.
+# Blends first, then English voices, American male first among those: the KITT register.
 def _rank(v: str) -> tuple:
-    return (0 if v.startswith("am_") else 1 if v.startswith("a") else 2 if v.startswith("b") else 3, v)
-VOICE_IDS.sort(key=_rank)
+    return (-1 if v in BLENDS else 0 if v.startswith("am_") else 1 if v.startswith("a") else 2 if v.startswith("b") else 3, v)
+VOICE_IDS = sorted(list(BLENDS) + VOICE_IDS, key=_rank)
 
 
 _whisper = None
@@ -61,8 +82,11 @@ def transcribe(audio: bytes, suffix: str) -> str:
 
 
 def synthesize(text: str, voice: str, speed: float) -> bytes:
-    lang = "en-gb" if voice.startswith("b") else "en-us"
-    samples, rate = kokoro.create(text, voice=voice, speed=speed, lang=lang)
+    if voice in BLENDS:
+        lang = BLENDS[voice].get("lang", "en-us")
+    else:
+        lang = "en-gb" if voice.startswith("b") else "en-us"
+    samples, rate = kokoro.create(text, voice=voice_style(voice), speed=speed, lang=lang)
     buf = io.BytesIO()
     sf.write(buf, samples, rate, format="WAV", subtype="PCM_16")
     return buf.getvalue()
