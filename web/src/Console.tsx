@@ -1,6 +1,6 @@
 import { Markdown } from '@/components/Markdown'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity, Bot, ChevronDown, Gauge, Play, Radio, Send, Square, Trash2, Volume2, X } from 'lucide-react'
+import { Activity, Bot, ChevronDown, Gauge, Mic, Play, Radio, Send, Square, Trash2, Volume2, X } from 'lucide-react'
 import type { ChatMessage, PlanWindow, SessionEntry, Task } from '@kitt/hub/protocol'
 import { Button } from '@/components/ui/button'
 import { FrontScanner } from '@/components/VoiceBox'
@@ -16,6 +16,7 @@ import { deriveLamps, type Lamp } from '@/lib/lamps'
 import { createNarrator } from '@/lib/narrator'
 import type { ActivityEvent } from '@/lib/hub-store'
 import { VoiceModule, type SendMode } from '@/components/VoiceModule'
+import { Pager } from '@/components/Pager'
 
 const KITT = 'kitt'
 const NO_MESSAGES: ChatMessage[] = []
@@ -135,98 +136,167 @@ export function Console() {
   }, [])
 
   const activeCount = state.registry.filter((e) => e.status === 'working').length
+  const isPhone = useIsPhone()
+  const planStatus = state.usage.plan.fiveHour?.status ?? state.usage.plan.sevenDay?.status ?? 'allowed'
+
+  const header = (
+    <header className={`mx-auto flex w-full max-w-[1600px] items-center justify-between border-b border-border bg-card/60 px-4 panel-cut ${isPhone ? 'mb-2 py-2' : 'mb-4 py-3'}`}>
+      <div className="flex min-w-0 items-center gap-3">
+        <div className={`h-2 w-2 ${state.connected ? 'animate-pulse bg-primary shadow-signal' : 'bg-destructive'}`} />
+        <div><h1 className={`font-display leading-none text-primary ${isPhone ? 'text-2xl' : 'text-3xl'}`}>K.I.T.T.</h1>{!isPhone && <p className="truncate text-[9px] uppercase text-muted-foreground">Knight Industries Two Thousand</p>}</div>
+      </div>
+      <div className="w-28 sm:w-56"><ActivityBar registry={state.registry} connected={state.connected} /></div>
+      <div className="text-right font-mono text-[9px] uppercase text-muted-foreground"><p className={state.connected ? 'text-green' : 'text-primary'}>{state.connected ? 'Neural link active' : 'Neural link lost'}</p>{!isPhone && <p>Console / 04.18</p>}</div>
+    </header>
+  )
+
+  const chatPanel = (
+    <main className={`flex flex-col overflow-hidden border border-border bg-card/75 panel-cut ${isPhone ? 'h-full min-h-0' : 'min-h-[720px] xl:min-h-0'}`}>
+      {mode === 'pursuit' && (
+        <div className="flex items-center justify-between border-b border-border bg-primary/10 px-4 py-2 font-mono text-[10px] uppercase">
+          <span>Pursuit → {terminalEntry?.name ?? 'no terminal selected'} <span className="text-muted-foreground">{terminalEntry?.cwd}</span>{terminalEntry && targetOffline && <span className="ml-2 text-destructive">offline</span>}</span>
+          <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setMode('kitt')}><X />Normal cruise</Button>
+        </div>
+      )}
+      {mode === 'task' && (
+        <div className="flex items-center justify-between border-b border-border bg-amber/10 px-4 py-2 font-mono text-[10px] uppercase">
+          <span className="text-amber">Auto cruise → commands dispatch as background tasks in {taskCwd.trim() || defaultDir}</span>
+          <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setMode('kitt')}><X />Normal cruise</Button>
+        </div>
+      )}
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-4 md:p-6">
+        {messages.length === 0 && !live && <div className="py-12 text-center"><p className="font-display text-2xl text-primary">Voice command ready</p><p className="mt-2 text-sm text-muted-foreground">Good evening. How may I assist you?</p></div>}
+        {messages.map((message) => <MessageRow key={message.id} message={message} />)}
+        {live && (
+          <div className="flex gap-3">
+            <span className="mt-1 h-2 w-2 shrink-0 animate-pulse bg-primary shadow-signal" />
+            <div className="prose prose-invert min-w-0 max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere]">
+              <span className="mb-1 block font-display text-sm text-primary">K.I.T.T. / RESPONSE</span>
+              {live.tools.map((t, i) => <ToolLine key={i} summary={t} />)}
+              {live.text ? <Markdown>{live.text}</Markdown> : <p className="animate-pulse font-mono text-xs uppercase text-amber">Processing command…</p>}
+            </div>
+          </div>
+        )}
+        {state.lastError && (
+          <div className="flex items-center justify-between border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+            <span>{state.lastError}</span>
+            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={actions.dismissError}><X /></Button>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+      <form onSubmit={(event) => { event.preventDefault(); send(input) }} className="flex gap-2 border-t border-border bg-background/60 p-3">
+        <textarea ref={inputRef} rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(input) } }} placeholder={placeholder} disabled={targetOffline} className="min-h-10 flex-1 resize-none border border-input bg-background px-3 py-2 text-sm outline-none placeholder:uppercase placeholder:text-muted-foreground focus:border-primary disabled:opacity-50" />
+        {isPhone && <HoldToTalk state={micState} onPointer={onMicPointer} />}
+        {busy && mode === 'kitt'
+          ? <Button type="button" size="icon" variant="outline" onClick={actions.interrupt} aria-label="Interrupt"><Square /></Button>
+          : <Button type="submit" size="icon" disabled={(mode !== 'task' && busy) || targetOffline || !input.trim()} aria-label={mode === 'task' ? 'Dispatch task' : 'Send command'}>{mode === 'task' ? <Play /> : <Send />}</Button>}
+      </form>
+    </main>
+  )
+
+  const commsPanel = (
+    <section className="border border-border bg-card/75 p-3 panel-cut">
+      <PanelTitle icon={Radio} status={micState === 'recording' ? 'Listening' : micState === 'transcribing' ? 'Transcribing' : mode === 'kitt' ? 'Normal cruise' : mode === 'task' ? 'Auto cruise' : 'Pursuit'}
+        action={<Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" title="Clear KITT conversation" aria-label="Clear KITT conversation" onClick={() => { kittVoice.cancel(); actions.clearChat() }}><Trash2 /></Button>}>
+        Comms control
+      </PanelTitle>
+      <VoiceModule lamps={lamps} onLamp={onLamp} onMicPointer={onMicPointer} mode={mode} onMode={setMode} getLevel={getLevel} />
+      <VoicePicker />
+    </section>
+  )
+
+  const networkPanel = (
+    <section className="border border-border bg-card/75 p-3 panel-cut">
+      <PanelTitle icon={Bot} status={`${activeCount} active`}>Agent network</PanelTitle>
+      {state.registry.map((entry) => (
+        <AgentRow key={entry.id} entry={entry} selected={entry.id === target} onSelect={() => selectSession(entry)} />
+      ))}
+      {state.registry.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No sessions online.</p>}
+    </section>
+  )
+  const signalField = <SignalField registry={state.registry} activity={state.activity} target={target} onSelect={(id) => { const e = state.registry.find((x) => x.id === id); if (e) selectSession(e) }} />
+  const taskPanel = <TaskPanel cwd={taskCwd} onCwd={setTaskCwd} defaultDir={defaultDir} />
+
+  const footer = (
+    <footer className="mx-auto mt-4 flex w-full max-w-[1600px] items-center justify-between border-t border-border pt-2 font-mono text-[9px] uppercase text-muted-foreground">
+      <span>{state.connected ? 'All systems operational' : 'Reconnecting…'}</span><span className="hidden sm:inline">Encrypted channel / Agent mesh connected</span><span className="flex items-center gap-3"><a href="https://ko-fi.com/bradycole" target="_blank" rel="noreferrer" className="transition-colors hover:text-amber" title="Support the build on Ko-fi">Fuel the build · Ko-fi</a><span className="text-primary">KITT-OS 4.18</span></span>
+    </footer>
+  )
+
+  if (isPhone) {
+    return (
+      <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
+        <div className="scanlines pointer-events-none fixed inset-0 z-50 opacity-15" />
+        <div className="px-3 pt-2">{header}</div>
+        <div className="mb-2 px-3"><FrontScanner /></div>
+        <Pager
+          labels={['Chat', 'Comms', 'Systems']}
+          pages={[
+            chatPanel,
+            <div className="space-y-4 pb-2">{commsPanel}</div>,
+            <div className="space-y-4 pb-2">{taskPanel}{networkPanel}<SystemPanel connected={state.connected} planStatus={planStatus} /><UsagePanel />{signalField}</div>,
+          ]}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="console-grid relative min-h-screen overflow-hidden bg-background p-3 text-foreground md:p-5 xl:flex xl:h-screen xl:flex-col">
       <div className="scanlines pointer-events-none fixed inset-0 z-50 opacity-15" />
-      <header className="mx-auto mb-4 flex w-full max-w-[1600px] items-center justify-between border-b border-border bg-card/60 px-4 py-3 panel-cut">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className={`h-2 w-2 ${state.connected ? 'animate-pulse bg-primary shadow-signal' : 'bg-destructive'}`} />
-          <div><h1 className="font-display text-3xl leading-none text-primary">K.I.T.T.</h1><p className="truncate text-[9px] uppercase text-muted-foreground">Knight Industries Two Thousand</p></div>
-        </div>
-        <div className="w-28 sm:w-56"><ActivityBar registry={state.registry} connected={state.connected} /></div>
-        <div className="text-right font-mono text-[9px] uppercase text-muted-foreground"><p className={state.connected ? 'text-green' : 'text-primary'}>{state.connected ? 'Neural link active' : 'Neural link lost'}</p><p>Console / 04.18</p></div>
-      </header>
-
+      {header}
       <div className="relative mx-auto mb-4 w-full max-w-[1600px]"><FrontScanner /></div>
-
-      <div className="mx-auto grid w-full max-w-[1600px] gap-4 max-md:grid-cols-1 xl:min-h-0 xl:flex-1 xl:grid-cols-[250px_minmax(440px,1fr)_330px]">
-        <aside className="space-y-4 max-md:contents xl:flex xl:min-h-0 xl:flex-col xl:overflow-y-auto">
-          <SystemPanel order="max-md:order-5" connected={state.connected} planStatus={state.usage.plan.fiveHour?.status ?? state.usage.plan.sevenDay?.status ?? 'allowed'} />
-          <UsagePanel order="max-md:order-6" />
-          <section className="border border-border bg-card/75 p-3 panel-cut max-md:order-4">
-            <PanelTitle icon={Bot} status={`${activeCount} active`}>Agent network</PanelTitle>
-            {state.registry.map((entry) => (
-              <AgentRow key={entry.id} entry={entry} selected={entry.id === target} onSelect={() => selectSession(entry)} />
-            ))}
-            {state.registry.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No sessions online.</p>}
-          </section>
-          <SignalField order="max-md:order-7" registry={state.registry} activity={state.activity} target={target} onSelect={(id) => { const e = state.registry.find((x) => x.id === id); if (e) selectSession(e) }} />
+      <div className="mx-auto grid w-full max-w-[1600px] gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[250px_minmax(440px,1fr)_330px]">
+        <aside className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:overflow-y-auto">
+          <SystemPanel connected={state.connected} planStatus={planStatus} />
+          <UsagePanel />
+          {networkPanel}
+          {signalField}
         </aside>
-
-        <main className="flex min-h-[720px] flex-col overflow-hidden border border-border bg-card/75 panel-cut max-md:order-2 max-md:h-[70vh] max-md:min-h-0 xl:min-h-0">
-          {mode === 'pursuit' && (
-            <div className="flex items-center justify-between border-b border-border bg-primary/10 px-4 py-2 font-mono text-[10px] uppercase">
-              <span>Pursuit → {terminalEntry?.name ?? 'no terminal selected'} <span className="text-muted-foreground">{terminalEntry?.cwd}</span>{terminalEntry && targetOffline && <span className="ml-2 text-destructive">offline</span>}</span>
-              <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setMode('kitt')}><X />Normal cruise</Button>
-            </div>
-          )}
-          {mode === 'task' && (
-            <div className="flex items-center justify-between border-b border-border bg-amber/10 px-4 py-2 font-mono text-[10px] uppercase">
-              <span className="text-amber">Auto cruise → commands dispatch as background tasks in {taskCwd.trim() || defaultDir}</span>
-              <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setMode('kitt')}><X />Normal cruise</Button>
-            </div>
-          )}
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-4 md:p-6">
-            {messages.length === 0 && !live && <div className="py-12 text-center"><p className="font-display text-2xl text-primary">Voice command ready</p><p className="mt-2 text-sm text-muted-foreground">Good evening. How may I assist you?</p></div>}
-            {messages.map((message) => <MessageRow key={message.id} message={message} />)}
-            {live && (
-              <div className="flex gap-3">
-                <span className="mt-1 h-2 w-2 shrink-0 animate-pulse bg-primary shadow-signal" />
-                <div className="prose prose-invert min-w-0 max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere]">
-                  <span className="mb-1 block font-display text-sm text-primary">K.I.T.T. / RESPONSE</span>
-                  {live.tools.map((t, i) => <ToolLine key={i} summary={t} />)}
-                  {live.text ? <Markdown>{live.text}</Markdown> : <p className="animate-pulse font-mono text-xs uppercase text-amber">Processing command…</p>}
-                </div>
-              </div>
-            )}
-            {state.lastError && (
-              <div className="flex items-center justify-between border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                <span>{state.lastError}</span>
-                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={actions.dismissError}><X /></Button>
-              </div>
-            )}
-            <div ref={endRef} />
-          </div>
-          <form onSubmit={(event) => { event.preventDefault(); send(input) }} className="flex gap-2 border-t border-border bg-background/60 p-3">
-            <textarea ref={inputRef} rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(input) } }} placeholder={placeholder} disabled={targetOffline} className="min-h-10 flex-1 resize-none border border-input bg-background px-3 py-2 text-sm outline-none placeholder:uppercase placeholder:text-muted-foreground focus:border-primary disabled:opacity-50" />
-            {busy && mode === 'kitt'
-              ? <Button type="button" size="icon" variant="outline" onClick={actions.interrupt} aria-label="Interrupt"><Square /></Button>
-              : <Button type="submit" size="icon" disabled={(mode !== 'task' && busy) || targetOffline || !input.trim()} aria-label={mode === 'task' ? 'Dispatch task' : 'Send command'}>{mode === 'task' ? <Play /> : <Send />}</Button>}
-          </form>
-        </main>
-
-        <aside className="space-y-4 max-md:contents xl:flex xl:min-h-0 xl:flex-col xl:overflow-y-auto">
-          <section className="border border-border bg-card/75 p-3 panel-cut max-md:order-1">
-            <PanelTitle icon={Radio} status={micState === 'recording' ? 'Listening' : micState === 'transcribing' ? 'Transcribing' : mode === 'kitt' ? 'Normal cruise' : mode === 'task' ? 'Auto cruise' : 'Pursuit'}
-              action={<Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" title="Clear KITT conversation" aria-label="Clear KITT conversation" onClick={() => { kittVoice.cancel(); actions.clearChat() }}><Trash2 /></Button>}>
-              Comms control
-            </PanelTitle>
-            <VoiceModule lamps={lamps} onLamp={onLamp} onMicPointer={onMicPointer} mode={mode} onMode={setMode} getLevel={getLevel} />
-            <VoicePicker />
-          </section>
-          <TaskPanel cwd={taskCwd} onCwd={setTaskCwd} defaultDir={defaultDir} order="max-md:order-3" />
+        {chatPanel}
+        <aside className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:overflow-y-auto">
+          {commsPanel}
+          {taskPanel}
         </aside>
       </div>
-
-      <footer className="mx-auto mt-4 flex w-full max-w-[1600px] items-center justify-between border-t border-border pt-2 font-mono text-[9px] uppercase text-muted-foreground">
-        <span>{state.connected ? 'All systems operational' : 'Reconnecting…'}</span><span className="hidden sm:inline">Encrypted channel / Agent mesh connected</span><span className="flex items-center gap-3"><a href="https://ko-fi.com/bradycole" target="_blank" rel="noreferrer" className="transition-colors hover:text-amber" title="Support the build on Ko-fi">Fuel the build · Ko-fi</a><span className="text-primary">KITT-OS 4.18</span></span>
-      </footer>
+      {footer}
     </div>
   )
 }
 
-function SystemPanel({ connected, planStatus, order = '' }: { connected: boolean; planStatus: PlanWindow['status']; order?: string }) {
+function useIsPhone(): boolean {
+  const query = '(max-width: 767px)'
+  const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    const update = () => setPhone(mq.matches)
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+  return phone
+}
+
+/** Phone-only hold-to-talk beside the input: lit while recording, dim while transcribing. */
+function HoldToTalk({ state, onPointer }: { state: MicState; onPointer: (phase: 'down' | 'up') => void }) {
+  const look = state === 'recording' ? 'bg-amber text-black shadow-amber border-amber' : state === 'transcribing' ? 'bg-amber/30 text-amber border-amber/40' : 'border-input text-amber'
+  return (
+    <button
+      type="button"
+      aria-label={state === 'recording' ? 'Release to send' : 'Hold to talk'}
+      title="Hold to talk"
+      onPointerDown={(e) => { e.preventDefault(); onPointer('down') }}
+      onPointerUp={() => onPointer('up')}
+      onPointerCancel={() => onPointer('up')}
+      onContextMenu={(e) => e.preventDefault()}
+      className={`flex h-10 w-12 shrink-0 select-none items-center justify-center border transition-colors [touch-action:none] ${look}`}
+    >
+      <Mic className="h-4 w-4" />
+    </button>
+  )
+}
+
+function SystemPanel({ connected, planStatus }: { connected: boolean; planStatus: PlanWindow['status'] }) {
   const { state } = useHub()
   const s = state.system
   const pct = (n: number) => `${Math.round(n * 100)}%`
@@ -235,7 +305,7 @@ function SystemPanel({ connected, planStatus, order = '' }: { connected: boolean
   const badge = !connected ? 'Link lost' : degraded ? 'Degraded' : warning ? 'Warning' : 'Nominal'
   const apiPct = s?.apiMs == null ? 0 : Math.min(1, s.apiMs / 30_000)
   return (
-    <section className={`border border-border bg-card/75 p-3 panel-cut ${order}`}>
+    <section className="border border-border bg-card/75 p-3 panel-cut">
       <PanelTitle icon={Activity} status={badge}>System status</PanelTitle>
       <Metric label="Neural load" value={s ? pct(s.load) : '—'} width={s ? pct(s.load) : '0%'} tone={s && s.load > 0.8 ? 'red' : 'amber'} />
       <Metric label="Memory buffer" value={s ? pct(s.memUsed) : '—'} width={s ? pct(s.memUsed) : '0%'} tone={s && s.memUsed > 0.9 ? 'red' : 'amber'} />
@@ -252,12 +322,12 @@ const ACTIVITY_DOT: Record<ActivityEvent['tone'], string> = {
 }
 const clock = (at: number) => new Date(at).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
-function SignalField({ registry, activity, target, onSelect, order = '' }: { registry: SessionEntry[]; activity: ActivityEvent[]; target: string; onSelect: (id: string) => void; order?: string }) {
+function SignalField({ registry, activity, target, onSelect }: { registry: SessionEntry[]; activity: ActivityEvent[]; target: string; onSelect: (id: string) => void }) {
   const blips = radarLayout(registry, RADAR)
   const contacts = registry.filter((e) => e.status !== 'offline').length
   const known = new Set(registry.map((e) => e.id))
   return (
-    <section className={`flex flex-col overflow-hidden border border-border bg-card/75 p-3 panel-cut xl:min-h-0 xl:flex-1 ${order}`}>
+    <section className="flex flex-col overflow-hidden border border-border bg-card/75 p-3 panel-cut xl:min-h-0 xl:flex-1">
       <PanelTitle icon={Radio} status={`${contacts} contact${contacts === 1 ? '' : 's'}`}>Signal field</PanelTitle>
       <div className="relative mx-auto mb-3 h-28 w-28 shrink-0 rounded-full border border-primary/25">
         <div className="absolute inset-[16%] rounded-full border border-dashed border-primary/30" />
@@ -408,14 +478,14 @@ function PlanMeter({ label, window, now }: { label: string; window: PlanWindow |
   )
 }
 
-function UsagePanel({ order = '' }: { order?: string }) {
+function UsagePanel() {
   const { state } = useHub()
   const { context, contextWindow, plan } = state.usage
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
   const ctxPct = Math.min(100, (context / contextWindow) * 100)
   return (
-    <section className={`border border-border bg-card/75 p-3 panel-cut ${order}`}>
+    <section className="border border-border bg-card/75 p-3 panel-cut">
       <PanelTitle icon={Gauge} status={`${context.toLocaleString()} tok`}>Agent metrics</PanelTitle>
       <Metric label="Context used" value={`${ctxPct.toFixed(1)}%`} width={`${ctxPct}%`} />
       <div className="mb-3 flex justify-between text-[10px] uppercase text-muted-foreground"><span>Context window</span><span className="text-foreground">{(contextWindow / 1000).toFixed(0)}K</span></div>
@@ -429,7 +499,7 @@ const TASK_DOT: Record<Task['status'], string> = {
   queued: 'bg-muted-foreground/60', running: 'animate-pulse bg-amber shadow-amber', done: 'bg-green shadow-green', error: 'bg-destructive', cancelled: 'bg-muted-foreground/40', interrupted: 'bg-destructive/60',
 }
 
-function TaskPanel({ cwd, onCwd, defaultDir, order = '' }: { cwd: string; onCwd: (v: string) => void; defaultDir: string; order?: string }) {
+function TaskPanel({ cwd, onCwd, defaultDir }: { cwd: string; onCwd: (v: string) => void; defaultDir: string }) {
   const { state, actions } = useHub()
   const [prompt, setPrompt] = useState('')
   const [open, setOpen] = useState<string | null>(null)
@@ -441,7 +511,7 @@ function TaskPanel({ cwd, onCwd, defaultDir, order = '' }: { cwd: string; onCwd:
     setPrompt('')
   }
   return (
-    <section className={`flex min-h-[390px] flex-col border border-border bg-card/75 p-3 panel-cut xl:min-h-0 xl:flex-1 ${order}`}>
+    <section className="flex min-h-[390px] flex-col border border-border bg-card/75 p-3 panel-cut xl:min-h-0 xl:flex-1">
       <PanelTitle icon={Bot} status={`${running} running`}>Task queue</PanelTitle>
       <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={2} placeholder="Assign a background operation…" className="w-full resize-none border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
       <input value={cwd} onChange={(event) => onCwd(event.target.value)} placeholder={`Working directory (default ${defaultDir})`} className="mt-2 w-full border border-input bg-background px-3 py-1.5 font-mono text-xs outline-none focus:border-primary" />
