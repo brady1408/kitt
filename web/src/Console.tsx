@@ -38,7 +38,7 @@ export function Console() {
   const sendRef = useRef<(text: string) => void>(() => {})
   const micRef = useRef<ReturnType<typeof createKittMic> | null>(null)
   if (!micRef.current) micRef.current = createKittMic({ onState: setMicState, onText: (t) => sendRef.current(t) })
-  const endRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const messages = state.messages[target] ?? NO_MESSAGES
@@ -76,7 +76,8 @@ export function Console() {
     return actions.onFrame((frame) => narrator.handle(frame))
   }, [actions])
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' })
+    const el = listRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages, live])
   const wasBusy = useRef(false)
   useEffect(() => {
@@ -164,7 +165,7 @@ export function Console() {
           <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setMode('kitt')}><X />Normal cruise</Button>
         </div>
       )}
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-4 md:p-6">
+      <div ref={listRef} className="min-h-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-4 md:p-6">
         {messages.length === 0 && !live && <div className="py-12 text-center"><p className="font-display text-2xl text-primary">Voice command ready</p><p className="mt-2 text-sm text-muted-foreground">Good evening. How may I assist you?</p></div>}
         {messages.map((message) => <MessageRow key={message.id} message={message} />)}
         {live && (
@@ -183,7 +184,6 @@ export function Console() {
             <Button variant="ghost" size="sm" className="h-6 px-2" onClick={actions.dismissError}><X /></Button>
           </div>
         )}
-        <div ref={endRef} />
       </div>
       <form onSubmit={(event) => { event.preventDefault(); send(input) }} className="flex gap-2 border-t border-border bg-background/60 p-3">
         <textarea ref={inputRef} rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(input) } }} placeholder={placeholder} disabled={targetOffline} className="min-h-10 flex-1 resize-none border border-input bg-background px-3 py-2 text-sm outline-none placeholder:uppercase placeholder:text-muted-foreground focus:border-primary disabled:opacity-50" />
@@ -232,10 +232,10 @@ export function Console() {
         <div className="px-3 pt-2">{header}</div>
         <div className="mb-2 px-3"><FrontScanner /></div>
         <Pager
-          labels={['Chat', 'Comms', 'Systems']}
+          labels={['Comms', 'Chat', 'Systems']}
           pages={[
-            chatPanel,
             <div className="space-y-4 pb-2">{commsPanel}</div>,
+            chatPanel,
             <div className="space-y-4 pb-2">{taskPanel}{networkPanel}<SystemPanel connected={state.connected} planStatus={planStatus} /><UsagePanel />{signalField}</div>,
           ]}
         />
